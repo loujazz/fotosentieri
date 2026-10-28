@@ -108,6 +108,7 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - 28/10/2026, pezzo 2c provato **solo con Google simulato** (Sheets e Drive finti in locale, browser Chromium): biglietti di sessione (firma, scadenza, rinnovo, limite di 7 giorni, email di altro dominio), ruoli (un admin non può inviare), validazioni delle richieste, origine non valida, un volontario non può confermare file altrui né aggiungere a un invio altrui, ripetizione della conferma senza duplicati, posizione e data riletti dal file (JPEG e HEIC), file originali identici, guasto passeggero con nuovo tentativo, Drive pieno con messaggio chiaro, foglio non raggiungibile con riprova della sola registrazione senza ricaricare.
 - 28/10/2026, pezzo 2c sul sito reale (`https://fotosentieri.vercel.app/`): il responsabile riferisce che login con biglietto di sessione e invio delle foto su Drive con registrazione nel foglio funzionano (non annotati i dettagli: numero di foto, ZIP o foto sciolte).
 - 28/10/2026, dashboard admin provata **solo con Google simulato** (Sheets e Drive finti, Chromium): permessi (senza token 401, volontario 403 su tutte e tre le funzioni), elenco con autore e posizione come numeri, conteggi, miniature solo con il biglietto, richieste non valide, approvazione e rifiuto (foglio, cartelle e motivo ripulito), approvazione di massa con avviso e annullamento, foto già rivista da un altro admin, Drive che rifiuta lo spostamento (righe invariate), foglio non aggiornabile dopo lo spostamento e ripetizione senza errori.
+- 28/10/2026, dashboard admin sul sito reale: il responsabile riferisce che funziona tutto (non annotati i dettagli su miniature, HEIC, numero di foto).
 
 ## Da verificare
 
@@ -123,7 +124,7 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - Invio su Drive con molte foto (100+), ZIP reali di Google Foto, volontari con account diversi dal responsabile, quote e limiti reali di Drive (provato dal responsabile in piccolo, il resto solo con simulazioni).
 - Rinnovo reale del biglietto di sessione dopo ore di uso e comportamento alla scadenza.
 - Caricamento di 100+ foto reali e di file grandi su reti lente (riprova da capo per foto, nessuna ripresa a metà file).
-- **Dashboard sul sito reale (priorità):** miniature di Drive (`thumbnailLink`: se Drive le prepara per i file HEIC e quanto dopo il caricamento), spostamento dei file tra cartelle con lo scope `drive.file`, aggiornamento delle celle nel foglio; tutto provato solo con simulazioni.
+- Miniature delle foto HEIC nella dashboard (se Drive le prepara) e di foto appena caricate; dettagli non annotati dopo la prova del responsabile.
 - Dashboard con più di 200 foto per stato (oggi si vedono le 200 più recenti) e con due admin che lavorano insieme.
 
 ## Regola di lavoro
