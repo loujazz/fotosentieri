@@ -57,7 +57,10 @@ Per tenere traccia, a ogni passo c'è una riga **«Copia → VARIABILE»**: dice
 - **Copia → `GOOGLE_SERVICE_ACCOUNT_JSON`**: apri il file `.json` con un editor di testo (Blocco note), seleziona **tutto il contenuto** (da `{` a `}`) e incollalo come valore della variabile. Non modificare nulla e non preoccuparti dei `\n` che vedi dentro la chiave: il programma li gestisce.
 - [ ] Dopo averlo incollato in Vercel, **cancella il file scaricato** dal computer (o conservalo in un posto sicuro, mai nel repository). Se pensi sia stato esposto, torna qui ed elimina la chiave, poi creane un'altra.
 
-> Se la creazione delle chiavi è bloccata («Disable service account key creation»), un amministratore dell'organizzazione deve rimuovere quel criterio nel progetto: **IAM e amministrazione → Criteri dell'organizzazione**.
+> Se la creazione delle chiavi è bloccata («Creazione di chiavi del service account disabilitata»):
+> 1. dai a te stesso, a livello di **organizzazione** `caibo.it`, il ruolo **Organization Policy Administrator** (IAM → Concedi l'accesso);
+> 2. nel progetto apri **IAM e amministrazione → Policy dell'organizzazione**, cerca `Disable service account key creation` e scegli la riga con ID **`iam.disableServiceAccountKeyCreation`** («Gestito (legacy)», stato Attivo), non quella con `iam.managed...`;
+> 3. **Gestisci policy** → **Override policy della risorsa padre** → **Aggiungi una regola** → Applicazione **Disattivata** → **Imposta policy**. Vale solo per questo progetto.
 
 ## 6. Drive condiviso con le cartelle
 
@@ -126,7 +129,7 @@ Righe iniziali suggerite (dalla riga 2): `albero caduto`, `frana`, `segnavia rov
 
 Righe iniziali suggerite: `email_avvisi_admin` con gli indirizzi degli admin separati da virgola (uso futuro).
 
-- [ ] Ricava l'ID del foglio: nell'indirizzo del foglio è la parte tra `/d/` e `/edit`: `https://docs.google.com/spreadsheets/d/`**`1AbC…`**`/edit`.
+- [ ] Ricava l'ID del foglio: nell'indirizzo del foglio è la parte tra `/d/` e `/edit`: `https://docs.google.com/spreadsheets/d/`**`1AbC…`**`/edit`. Deve avere circa 44 caratteri e non contenere `/`, `?`, `#` né `gid=`: se copi anche la coda dell'indirizzo, il sito non trova il foglio (errore 404). Il foglio deve essere un vero Foglio Google: se parti da un file `.xlsx`, usa **File → Salva come Fogli Google**.
 - **Copia → `SHEET_ID`**: l'ID del foglio.
 
 ## 8. Nuovo progetto Vercel

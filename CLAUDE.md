@@ -27,6 +27,8 @@ I volontari della sentieristica del CAI Bologna "Mario Fantin" segnalano problem
 - **28/10/2026, account di servizio:** la chiave sta in un'unica variabile `GOOGLE_SERVICE_ACCOUNT_JSON` con tutto il JSON; il codice gestisce gli a-capo della `private_key`.
 - **28/10/2026, scheletro:** il browser legge il client ID da `GET /api/me?config=1` (senza token). Ogni funzione in `api/` si esporta con `protetto([...ruoli], gestore)` (`api/_lib/auth.js`). Nessun `vercel.json` per ora.
 - **28/10/2026, documenti nel repository:** in `docs/` ci sono la specifica OpenAPI di OSM2CAI, la procedura per i volontari e la pagina di test dell'EXIF; dall'ambiente di sviluppo non si raggiungono i server del CAI, quindi la specifica è la fonte per i passi sulla sincronizzazione.
+- **28/10/2026, chiavi dell'account di servizio:** l'organizzazione `caibo.it` blocca la creazione di chiavi (policy `iam.disableServiceAccountKeyCreation`, legacy). Il blocco è stato tolto **solo per il progetto** `segnalazioni-sentieri` (policy del progetto con override, applicazione disattivata). In alternativa più sicura, da valutare in futuro: federazione delle identità per i workload, senza chiavi scaricate.
+- **28/10/2026, foglio dati:** deve essere un vero Foglio Google nel Drive condiviso (un `.xlsx` caricato va convertito con «Salva come Fogli Google»). `SHEET_ID` è solo la parte dell'indirizzo tra `/d/` e `/edit` (circa 44 caratteri). In caso di errore di lettura il server scrive nei log una riga `Diagnostica foglio:` con motivo, email del robot e inizio/fine dell'ID.
 
 ## Ruoli
 
@@ -93,6 +95,7 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - L'app Drive (Android e iPhone) conserva la posizione, ma non è la strada scelta.
 - L'API OSM2CAI ha documentazione ufficiale (Swagger, versione 1.0.0).
 - 28/10/2026, scheletro (solo lato server, con Google simulato): ruoli `volontario`, `admin`, `super_admin`; rifiuto di utente non nel foglio, con `attivo` = `NO` o con ruolo non valido; rifiuto di dominio diverso da `caibo.it` (anche `caibo.it.evil.com` e Gmail); 401 senza token o con token non valido; lettura della `private_key` con a-capo normali, con doppio escape e con a-capo veri; errore 500 chiaro se il JSON è rotto.
+- 28/10/2026, in produzione su Vercel (`https://fotosentieri.vercel.app/`): login reale con Google con account `@caibo.it`, consenso Interno, origine autorizzata, lettura reale del foglio con l'account di servizio, ruolo `super_admin` letto dalla scheda `utenti` e vista «Dashboard» mostrata.
 
 ## Da verificare
 
@@ -103,7 +106,7 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - Conferma del CAI (`catastorei@cai.it`) su uso e frequenza dell'API.
 - Informativa privacy per le foto e per i dati degli autori.
 - Chi vede la mappa riservata: tutti gli account `@caibo.it` oppure solo admin e volontari abilitati.
-- Login reale con Google (client OAuth, consenso Interno, origini), lettura reale del foglio con l'account di servizio e scelta della vista con un volontario, un admin e un super_admin: procedura nella pull request del passo 1.
+- Vista e permessi con un account `admin` e uno `volontario` (finora provato solo `super_admin`), e con un account non abilitato o con `attivo` = `NO`.
 - Rinnovo dell'ID token (dura 1 ora) per le sessioni lunghe di caricamento.
 
 ## Regola di lavoro
