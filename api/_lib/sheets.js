@@ -49,6 +49,20 @@ function leggiCredenziali() {
   return credenziali;
 }
 
+// Solo per i log di diagnostica: email dell'account di servizio (non è un segreto).
+function emailAccountDiServizio() {
+  try {
+    return leggiCredenziali().client_email;
+  } catch (errore) {
+    return '(non leggibile)';
+  }
+}
+
+// Mostra solo lunghezza, inizio e fine di un ID, mai il valore intero.
+function descriviId(id) {
+  return `${id.length} caratteri, ${id.slice(0, 4)}…${id.slice(-4)}`;
+}
+
 let auth;
 function clientGoogle() {
   if (!auth) {
@@ -73,7 +87,13 @@ async function leggiScheda(nomeScheda) {
   } catch (errore) {
     if (errore instanceof ErroApi) throw errore;
     const stato = errore.response && errore.response.status;
+    const dettaglio = errore.response && errore.response.data && errore.response.data.error;
     console.error(`Lettura della scheda "${nomeScheda}" non riuscita (HTTP ${stato || '?'}):`, errore.message);
+    console.error('Diagnostica foglio:', JSON.stringify({
+      motivo: dettaglio && (dettaglio.status || dettaglio.message),
+      accountDiServizio: emailAccountDiServizio(),
+      idFoglio: descriviId(idFoglio),
+    }));
     throw new ErroApi(500, 'errore_foglio', `Impossibile leggere la scheda "${nomeScheda}"`);
   }
   const righe = (risposta.data && risposta.data.values) || [];
