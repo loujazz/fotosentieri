@@ -153,8 +153,11 @@ Righe iniziali suggerite: `email_avvisi_admin` con gli indirizzi degli admin sep
 | `FOLDER_DA_APPROVARE_ID` | ID della cartella `Da approvare` | passo 6 |
 | `FOLDER_APPROVATE_ID` | ID della cartella `Approvate` | passo 6 |
 | `FOLDER_SCARTATE_ID` | ID della cartella `Scartate` | passo 6 |
+| `SESSION_SECRET` | una frase casuale lunga (almeno 32 caratteri) per firmare la sessione del sito | la crei tu: vedi sotto |
 
-(Nello scheletro del passo 1 servono davvero solo `GOOGLE_CLIENT_ID`, `ALLOWED_DOMAIN`, `GOOGLE_SERVICE_ACCOUNT_JSON` e `SHEET_ID`; le variabili di Drive servono dal passo 2 in poi, ma conviene prepararle ora.)
+**Come creare `SESSION_SECRET`:** serve una stringa casuale che non conosce nessun altro. Su Mac apri l'app **Terminale**, scrivi `openssl rand -base64 48` e premi Invio: copia la riga che compare (circa 64 caratteri). Incollala come valore su Vercel e non scriverla da nessun'altra parte. Se un giorno la cambi, tutti dovranno rifare l'accesso.
+
+(Per l'accesso bastano `GOOGLE_CLIENT_ID`, `ALLOWED_DOMAIN`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `SHEET_ID` e `SESSION_SECRET`. Per il caricamento delle foto servono anche `DRIVE_ID` e `FOLDER_DA_APPROVARE_ID`; le altre due cartelle servono dalla dashboard in poi.)
 
 ## 9. Prove sul proprio computer (facoltativo, per chi sviluppa)
 

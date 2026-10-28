@@ -3,6 +3,7 @@
 // dei permessi avviene sempre qui, sul server.
 const { OAuth2Client } = require('google-auth-library');
 const { ErroApi, variabile, leggiScheda } = require('./sheets');
+const sessione = require('./sessione');
 
 const RUOLI = ['volontario', 'admin', 'super_admin'];
 const RUOLI_ADMIN = ['admin', 'super_admin'];
@@ -13,11 +14,20 @@ function dominioAmmesso() {
   return variabile('ALLOWED_DOMAIN').toLowerCase().replace(/^@/, '');
 }
 
-// Verifica firma, scadenza e destinatario dell'ID token, poi il dominio.
+// Identifica chi chiama. Accetta il biglietto di sessione del sito oppure, per l'accesso iniziale,
+// l'ID token di Google (firma, scadenza, destinatario e dominio verificati).
+// Restituisce { email, nomeGoogle, origine: 'sessione' | 'google', inizio }.
 async function verificaToken(req) {
   const intestazione = req.headers.authorization || '';
   const corrispondenza = intestazione.match(/^Bearer (.+)$/i);
   if (!corrispondenza) throw new ErroApi(401, 'token_mancante');
+
+  if (sessione.eBigliettoDiSessione(corrispondenza[1])) {
+    const dati = sessione.verifica(corrispondenza[1]);
+    const dominioSessione = dominioAmmesso();
+    if (!dati.email.endsWith('@' + dominioSessione)) throw new ErroApi(403, 'dominio_non_ammesso');
+    return { email: dati.email, nomeGoogle: dati.email, origine: 'sessione', inizio: dati.inizio };
+  }
 
   let payload;
   try {
@@ -36,7 +46,7 @@ async function verificaToken(req) {
   if (!payload.email_verified || !email.endsWith('@' + dominio) || payload.hd !== dominio) {
     throw new ErroApi(403, 'dominio_non_ammesso');
   }
-  return { email, nomeGoogle: payload.name || email };
+  return { email, nomeGoogle: payload.name || email, origine: 'google', inizio: Math.floor(Date.now() / 1000) };
 }
 
 function siAttivo(valore) {
@@ -45,8 +55,7 @@ function siAttivo(valore) {
 
 // Cerca l'utente nella scheda "utenti". Fallisce se non c'è, non è attivo
 // o ha un ruolo non valido o non ammesso per la funzione richiesta.
-async function utenteAbilitato(req, ruoliAmmessi) {
-  const identita = await verificaToken(req);
+async function utenteDaIdentita(identita, ruoliAmmessi) {
   const utenti = await leggiScheda('utenti');
   const riga = utenti.find((u) => (u.email || '').toLowerCase() === identita.email);
   const ruolo = riga ? (riga.ruolo || '').toLowerCase() : '';
@@ -65,8 +74,9 @@ function protetto(ruoliAmmessi, gestore) {
   return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
-      const utente = await utenteAbilitato(req, ruoliAmmessi);
-      await gestore(req, res, utente);
+      const identita = await verificaToken(req);
+      const utente = await utenteDaIdentita(identita, ruoliAmmessi);
+      await gestore(req, res, utente, identita);
     } catch (errore) {
       risposta(res, errore);
     }
