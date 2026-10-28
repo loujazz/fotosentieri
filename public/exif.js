@@ -9,6 +9,8 @@
 //   lat, lon    gradi decimali, oppure null se la posizione manca
 //   quota       metri (negativa sotto il livello del mare), oppure null
 //   gpsZero     true se il blocco GPS c'è ma le coordinate sono 0,0 (posizione non valida)
+//   gpsNonValido true se il blocco GPS c'è ma i valori sono inutilizzabili (vuoti, fuori scala)
+//   gpsGrezzo   testo con i valori GPS letti dal file, solo per diagnosi (oppure null)
 //   dataScatto  "AAAA-MM-GGTHH:MM:SS" (ora locale del telefono, senza fuso) oppure null
 //   marca, modello
 //   errore      testo dell'errore se il file è danneggiato o non si è potuto leggere, altrimenti null
@@ -26,7 +28,7 @@
 
   function nuovoRisultato(formato) {
     return {
-      formato: formato, exif: false, lat: null, lon: null, quota: null, gpsZero: false,
+      formato: formato, exif: false, lat: null, lon: null, quota: null, gpsZero: false, gpsNonValido: false, gpsGrezzo: null,
       dataScatto: null, marca: null, modello: null, errore: null,
     };
   }
@@ -105,14 +107,20 @@
     if (ifd0[0x8825]) {
       var gps = leggiIfd(u32(ifd0[0x8825].pos));
       if (gps[2] && gps[4]) {
-        var lat = gradi(razionali(gps[2]));
-        var lon = gradi(razionali(gps[4]));
-        if ((ascii(gps[1]) || 'N').charAt(0).toUpperCase() === 'S') lat = -lat;
-        if ((ascii(gps[3]) || 'E').charAt(0).toUpperCase() === 'W') lon = -lon;
+        var gradiLat = razionali(gps[2]);
+        var gradiLon = razionali(gps[4]);
+        var riferimentoLat = (ascii(gps[1]) || 'N').charAt(0).toUpperCase();
+        var riferimentoLon = (ascii(gps[3]) || 'E').charAt(0).toUpperCase();
+        // Valori grezzi, utili per capire perché una posizione non è usabile.
+        risultato.gpsGrezzo = 'lat ' + riferimentoLat + ' [' + gradiLat.join(', ') + '], lon ' + riferimentoLon + ' [' + gradiLon.join(', ') + ']';
+        var lat = gradi(gradiLat);
+        var lon = gradi(gradiLon);
+        if (riferimentoLat === 'S') lat = -lat;
+        if (riferimentoLon === 'W') lon = -lon;
         if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-          throw new Error('coordinate GPS non valide');
-        }
-        if (lat === 0 && lon === 0) {
+          // Il file ha un blocco GPS ma con valori inutilizzabili: non è un file rotto, è una posizione assente.
+          risultato.gpsNonValido = true;
+        } else if (lat === 0 && lon === 0) {
           risultato.gpsZero = true;
         } else {
           risultato.lat = lat;

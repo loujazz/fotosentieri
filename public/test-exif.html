@@ -89,8 +89,9 @@
           dati.push(['Mappa', '<a href="https://www.openstreetmap.org/?mlat=' + r.lat + '&mlon=' + r.lon + '#map=17/' + r.lat + '/' + r.lon + '" target="_blank" rel="noopener">Apri su OpenStreetMap</a>']);
           return scheda('ok', file.name, '✅ Posizione presente', dati, base + ' | GPS SI | ' + coord + (r.dataScatto ? ' | ' + r.dataScatto : ''));
         }
-        var motivo = !r.exif ? 'Nessun metadato nel file' : (r.gpsZero ? 'Posizione a 0,0 (non valida)' : 'Metadati presenti ma senza posizione');
+        var motivo = !r.exif ? 'Nessun metadato nel file' : (r.gpsNonValido ? 'Posizione presente nel file ma con valori non utilizzabili' : (r.gpsZero ? 'Posizione a 0,0 (non valida)' : 'Metadati presenti ma senza posizione'));
         dati.push(['Motivo', esc(motivo)]);
+        if (r.gpsGrezzo) { dati.push(['Dati GPS nel file', esc(r.gpsGrezzo)]); motivo += ' (' + r.gpsGrezzo + ')'; }
         scheda('no', file.name, '❌ Posizione assente', dati, base + ' | GPS NO | ' + motivo);
       }
 
