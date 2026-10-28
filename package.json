@@ -1,0 +1,12 @@
+{
+  "name": "fotosentieri",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Segnalazioni sentieri CAI Bologna \"Mario Fantin\"",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "google-auth-library": "^9.15.0"
+  }
+}

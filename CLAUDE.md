@@ -21,6 +21,13 @@ I volontari della sentieristica del CAI Bologna "Mario Fantin" segnalano problem
 - **Sincronizzazione automatica** con OSM2CAI, non manuale (vedi sotto).
 - Stack: JavaScript semplice, Leaflet, Vercel (come Fantin Maps). Nessun costo ricorrente, ecosistema Google.
 
+### Decisioni successive
+
+- **28/10/2026, ruoli:** la colonna `ruolo` della scheda `utenti` ha tre valori: `volontario`, `admin`, `super_admin` (nessuna colonna separata). `super_admin` vede la stessa dashboard di `admin`; la gestione di utenti e ruoli è riservata a lui (da costruire).
+- **28/10/2026, account di servizio:** la chiave sta in un'unica variabile `GOOGLE_SERVICE_ACCOUNT_JSON` con tutto il JSON; il codice gestisce gli a-capo della `private_key`.
+- **28/10/2026, scheletro:** il browser legge il client ID da `GET /api/me?config=1` (senza token). Ogni funzione in `api/` si esporta con `protetto([...ruoli], gestore)` (`api/_lib/auth.js`). Nessun `vercel.json` per ora.
+- **28/10/2026, documenti nel repository:** in `docs/` ci sono la specifica OpenAPI di OSM2CAI, la procedura per i volontari e la pagina di test dell'EXIF; dall'ambiente di sviluppo non si raggiungono i server del CAI, quindi la specifica è la fonte per i passi sulla sincronizzazione.
+
 ## Ruoli
 
 - **Volontario:** vede solo "Carica foto" e l'elenco dei propri invii.
@@ -85,6 +92,7 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - Foto scaricata da Google Foto sul computer e letta dal browser desktop: posizione conservata.
 - L'app Drive (Android e iPhone) conserva la posizione, ma non è la strada scelta.
 - L'API OSM2CAI ha documentazione ufficiale (Swagger, versione 1.0.0).
+- 28/10/2026, scheletro (solo lato server, con Google simulato): ruoli `volontario`, `admin`, `super_admin`; rifiuto di utente non nel foglio, con `attivo` = `NO` o con ruolo non valido; rifiuto di dominio diverso da `caibo.it` (anche `caibo.it.evil.com` e Gmail); 401 senza token o con token non valido; lettura della `private_key` con a-capo normali, con doppio escape e con a-capo veri; errore 500 chiaro se il JSON è rotto.
 
 ## Da verificare
 
@@ -95,3 +103,10 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - Conferma del CAI (`catastorei@cai.it`) su uso e frequenza dell'API.
 - Informativa privacy per le foto e per i dati degli autori.
 - Chi vede la mappa riservata: tutti gli account `@caibo.it` oppure solo admin e volontari abilitati.
+- Login reale con Google (client OAuth, consenso Interno, origini), lettura reale del foglio con l'account di servizio e scelta della vista con un volontario, un admin e un super_admin: procedura nella pull request del passo 1.
+- Rinnovo dell'ID token (dura 1 ora) per le sessioni lunghe di caricamento.
+
+## Regola di lavoro
+A fine di ogni sessione aggiorna questo file: sposta tra "Verificato" ciò che è
+stato provato davvero, aggiorna "Da verificare" e scrivi le decisioni nuove con
+la data. Non cancellare le decisioni precedenti, correggile se cambiano.

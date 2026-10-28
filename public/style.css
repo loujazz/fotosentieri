@@ -1,0 +1,54 @@
+:root {
+  --verde: #1f5f3a;
+  --verde-scuro: #164a2d;
+  --grigio: #5a5a5a;
+  --sfondo: #f6f4ee;
+  --bordo: #d8d4c6;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--sfondo);
+  color: #1d1d1d;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 20px;
+  line-height: 1.5;
+}
+.testata {
+  background: var(--verde);
+  color: #fff;
+  padding: 16px 20px;
+}
+.testata h1 { margin: 0; font-size: 1.5rem; }
+.sottotitolo { margin: 0; opacity: .85; font-size: .9rem; }
+.utente {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: .9rem;
+}
+main { max-width: 720px; margin: 0 auto; padding: 24px 20px; }
+.vista[hidden], [hidden] { display: none !important; }
+h2 { font-size: 1.6rem; margin: 0 0 12px; }
+.messaggio { margin: 0 0 16px; }
+.ruolo { color: var(--grigio); font-size: .9rem; }
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 14px 24px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--verde);
+  color: #fff;
+  cursor: pointer;
+}
+button:hover { background: var(--verde-scuro); }
+button.secondario {
+  background: #fff;
+  color: var(--verde);
+  border: 2px solid var(--verde);
+  padding: 8px 16px;
+}
+.vista > button.secondario { padding: 14px 24px; }
+#pulsante-google { min-height: 50px; }
