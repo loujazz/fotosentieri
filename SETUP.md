@@ -54,7 +54,7 @@ Per tenere traccia, a ogni passo c'è una riga **«Copia → VARIABILE»**: dice
 - [ ] «Concedi l'accesso al progetto»: **non assegnare nessun ruolo** (salta). **Fine**.
 - [ ] Apri l'account appena creato: nella scheda **Dettagli** copia l'**indirizzo email** (tipo `sentieri-robot@segnalazioni-sentieri.iam.gserviceaccount.com`). Servirà per dare i permessi ai passi 6 e 7.
 - [ ] Scheda **Chiavi** → **Aggiungi chiave** → **Crea nuova chiave** → **JSON** → **Crea**. Si scarica un file `.json`.
-- **Copia → `GOOGLE_SERVICE_ACCOUNT_JSON`**: apri il file `.json` con un editor di testo (Blocco note), seleziona **tutto il contenuto** (da `{` a `}`) e incollalo come valore della variabile.
+- **Copia → `GOOGLE_SERVICE_ACCOUNT_JSON`**: apri il file `.json` con un editor di testo (Blocco note), seleziona **tutto il contenuto** (da `{` a `}`) e incollalo come valore della variabile. Non modificare nulla e non preoccuparti dei `\n` che vedi dentro la chiave: il programma li gestisce.
 - [ ] Dopo averlo incollato in Vercel, **cancella il file scaricato** dal computer (o conservalo in un posto sicuro, mai nel repository). Se pensi sia stato esposto, torna qui ed elimina la chiave, poi creane un'altra.
 
 > Se la creazione delle chiavi è bloccata («Disable service account key creation»), un amministratore dell'organizzazione deve rimuovere quel criterio nel progetto: **IAM e amministrazione → Criteri dell'organizzazione**.
@@ -87,9 +87,9 @@ Come trovare gli ID:
 |---|---|---|---|---|
 | `email` | `nome` | `ruolo` | `attivo` | `creato_il` |
 
-- `ruolo`: solo `volontario` oppure `admin`.
+- `ruolo`: uno solo tra `volontario`, `admin`, `super_admin` (scritti così, in minuscolo). Il `super_admin` è l'amministratore con più poteri (gestione utenti e ruoli) e vede le stesse schermate dell'`admin`.
 - `attivo`: `SI` o `NO`. Chi ha `NO` (o non è nell'elenco) non entra.
-- Per i primi prove aggiungi **tu** le righe: ad esempio la tua email `@caibo.it` con ruolo `admin`, e un'altra con ruolo `volontario`.
+- Per le prime prove aggiungi **tu** le righe: la tua email `@caibo.it` con ruolo `super_admin`, un'altra con ruolo `admin` e una con ruolo `volontario`. Scrivi l'email esattamente come l'account Google.
 
 **Scheda `invii`** (una riga per ogni invio di foto)
 
@@ -151,7 +151,7 @@ Righe iniziali suggerite: `email_avvisi_admin` con gli indirizzi degli admin sep
 | `FOLDER_APPROVATE_ID` | ID della cartella `Approvate` | passo 6 |
 | `FOLDER_SCARTATE_ID` | ID della cartella `Scartate` | passo 6 |
 
-(Nello scheletro del passo 1 sono usate davvero solo le prime quattro e `SHEET_ID`; le variabili di Drive servono dal passo 2 in poi, ma conviene prepararle ora.)
+(Nello scheletro del passo 1 servono davvero solo `GOOGLE_CLIENT_ID`, `ALLOWED_DOMAIN`, `GOOGLE_SERVICE_ACCOUNT_JSON` e `SHEET_ID`; le variabili di Drive servono dal passo 2 in poi, ma conviene prepararle ora.)
 
 ## 9. Prove sul proprio computer (facoltativo, per chi sviluppa)
 
@@ -168,5 +168,5 @@ Righe iniziali suggerite: `email_avvisi_admin` con gli indirizzi degli admin sep
 - [ ] ID client OAuth creato, con le origini giuste
 - [ ] Account di servizio creato, chiave JSON copiata in Vercel e file cancellato
 - [ ] Drive condiviso con le tre cartelle, account di servizio «Gestore dei contenuti», nessun link pubblico
-- [ ] Foglio con le cinque schede e le intestazioni, almeno un admin e un volontario in `utenti`
+- [ ] Foglio con le cinque schede e le intestazioni, almeno un super_admin, un admin e un volontario in `utenti`
 - [ ] Progetto Vercel con tutte le variabili compilate
