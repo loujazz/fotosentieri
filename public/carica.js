@@ -36,6 +36,15 @@
     return base.charAt(0) !== '.' && Object.prototype.hasOwnProperty.call(ESTENSIONI, estensione(base));
   }
 
+  function nuovoUuid() {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    var b = window.crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    var h = Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  }
+
   function el(tag, classe, testo) {
     var e = document.createElement(tag);
     if (classe) e.className = classe;
@@ -140,7 +149,11 @@
     var elenco = []; // { chiave, nome, file, esito, anteprima }
     var ignorati = [];
     var chiavi = {};
-    var inCorso = false;
+    var inCorso = false; // lettura di foto e ZIP in corso
+    var inviando = false; // invio in corso
+    var idInvio = null;
+    var dataModificata = false;
+    var esitoInvio = null; // { inviate, nonInviate } dell'ultimo tentativo
 
     contenitore.textContent = '';
     var scelta = el('label', 'scelta-file');
@@ -151,7 +164,7 @@
     campo.accept = '.jpg,.jpeg,.heic,.heif,.zip,image/jpeg,image/heic,image/heif,application/zip';
     scelta.appendChild(pulsante);
     scelta.appendChild(campo);
-    var aiuto = el('p', 'nota', 'Puoi scegliere più foto insieme, oppure il file ZIP scaricato da Google Foto. Le foto non vengono inviate: per ora vengono solo controllate.');
+    var aiuto = el('p', 'nota', 'Puoi scegliere più foto insieme, oppure il file ZIP scaricato da Google Foto. Prima di inviare, controlla l\'elenco qui sotto.');
     var stato = el('p', 'stato-lettura');
     stato.setAttribute('aria-live', 'polite');
     var riepilogo = el('div', 'riepilogo-foto');
@@ -160,7 +173,21 @@
     var svuota = el('button', 'secondario', 'Svuota l\'elenco');
     svuota.type = 'button';
     svuota.hidden = true;
-    [scelta, aiuto, stato, riepilogo, lista, dettagliIgnorati, svuota].forEach(function (n) { contenitore.appendChild(n); });
+
+    var pannelloInvio = el('div', 'pannello-invio');
+    var etichettaData = el('label', 'campo-data');
+    etichettaData.appendChild(el('span', null, 'Data del sopralluogo'));
+    var campoData = document.createElement('input');
+    campoData.type = 'date';
+    etichettaData.appendChild(campoData);
+    var aiutoData = el('p', 'nota', 'È la data della prima foto: correggila se il sopralluogo è stato un altro giorno.');
+    var pulsanteInvia = el('button', 'grande', 'Invia');
+    pulsanteInvia.type = 'button';
+    var avanzamento = el('p', 'stato-lettura');
+    avanzamento.setAttribute('aria-live', 'polite');
+    [etichettaData, aiutoData, pulsanteInvia, avanzamento].forEach(function (n) { pannelloInvio.appendChild(n); });
+
+    [scelta, aiuto, stato, riepilogo, lista, pannelloInvio, dettagliIgnorati, svuota].forEach(function (n) { contenitore.appendChild(n); });
 
     function liberaAnteprima(voce) {
       if (voce.anteprima) URL.revokeObjectURL(voce.anteprima);
@@ -179,8 +206,13 @@
         riepilogo.appendChild(el('div', null, '✅ Con posizione: ' + conPosizione));
         if (senza) riepilogo.appendChild(el('div', 'avviso-testo', '⚠️ Senza posizione: ' + senza));
         if (illeggibili) riepilogo.appendChild(el('div', 'avviso-testo', '❌ Non leggibili: ' + illeggibili));
-        if (senza || illeggibili) {
+        var inviate = elenco.filter(function (v) { return v.stato === 'inviata'; }).length;
+        if (inviate) riepilogo.appendChild(el('div', null, '📤 Già inviate: ' + inviate));
+        if (senza) {
           riepilogo.appendChild(el('div', 'nota', 'Le foto senza posizione si possono inviare lo stesso, ma gli amministratori le vedranno segnalate. Se puoi, ricaricale dal tuo Google Foto.'));
+        }
+        if (illeggibili) {
+          riepilogo.appendChild(el('div', 'nota', 'Le foto non leggibili non vengono inviate.'));
         }
       }
 
@@ -209,16 +241,33 @@
           dati.appendChild(el('div', 'esito-foto', '⚠️ Senza posizione'));
           dati.appendChild(el('div', 'nota', r.exif ? MSG_SENZA_POSIZIONE : MSG_SENZA_DATI));
         }
-        var togli = el('button', 'secondario piccolo', 'Togli dall\'elenco');
-        togli.type = 'button';
-        togli.addEventListener('click', function () {
-          var i = elenco.indexOf(voce);
-          if (i !== -1) elenco.splice(i, 1);
-          delete chiavi[voce.chiave];
-          liberaAnteprima(voce);
-          ridisegna();
-        });
-        dati.appendChild(togli);
+        voce.barra = null;
+        voce.testoBarra = null;
+        if (voce.stato === 'inviata') {
+          dati.appendChild(el('div', 'esito-foto stato-inviata', '📤 Inviata'));
+        } else if (voce.stato === 'in_invio') {
+          voce.barra = document.createElement('progress');
+          voce.barra.max = 1;
+          voce.barra.value = voce.progresso;
+          voce.testoBarra = el('div', 'nota', 'Invio in corso…');
+          dati.appendChild(voce.barra);
+          dati.appendChild(voce.testoBarra);
+        } else if (voce.stato === 'caricata' && !voce.errore) {
+          dati.appendChild(el('div', 'nota', 'Caricata su Drive, sto registrando…'));
+        }
+        if (voce.errore) dati.appendChild(el('div', 'nota avviso-testo', voce.errore));
+        if (!voce.idFileDrive && voce.stato !== 'in_invio' && !inviando) {
+          var togli = el('button', 'secondario piccolo', 'Togli dall\'elenco');
+          togli.type = 'button';
+          togli.addEventListener('click', function () {
+            var i = elenco.indexOf(voce);
+            if (i !== -1) elenco.splice(i, 1);
+            delete chiavi[voce.chiave];
+            liberaAnteprima(voce);
+            ridisegna();
+          });
+          dati.appendChild(togli);
+        }
         scheda.appendChild(dati);
         lista.appendChild(scheda);
       });
@@ -232,6 +281,97 @@
         dettagliIgnorati.appendChild(ul);
       }
       svuota.hidden = elenco.length === 0 && ignorati.length === 0;
+      svuota.disabled = inviando;
+      campo.disabled = inCorso || inviando;
+      aggiornaPannelloInvio();
+    }
+
+    function leggibili() {
+      return elenco.filter(function (v) { return !v.esito.errore; });
+    }
+
+    function daInviare() {
+      return leggibili().filter(function (v) { return v.stato !== 'inviata'; });
+    }
+
+    // Data del sopralluogo: precompilata con il giorno della prima foto, finché non la cambia il volontario.
+    function dataSuggerita() {
+      var date = leggibili().map(function (v) { return (v.esito.dataScatto || '').slice(0, 10); })
+        .filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); }).sort();
+      return date[0] || '';
+    }
+
+    function aggiornaPannelloInvio() {
+      var restanti = daInviare().length;
+      var tutteInviate = leggibili().length > 0 && restanti === 0;
+      pannelloInvio.hidden = leggibili().length === 0;
+      etichettaData.hidden = aiutoData.hidden = tutteInviate;
+      pulsanteInvia.hidden = tutteInviate;
+      if (!dataModificata && !inviando) campoData.value = dataSuggerita();
+      campoData.disabled = inviando;
+      pulsanteInvia.disabled = inviando || restanti === 0;
+      pulsanteInvia.textContent = inviando ? 'Invio in corso…' : (esitoInvio && esitoInvio.nonInviate ? 'Riprova a inviare ' + restanti + (restanti === 1 ? ' foto' : ' foto') : 'Invia ' + restanti + (restanti === 1 ? ' foto' : ' foto'));
+      avanzamento.className = 'stato-lettura';
+      if (inviando) {
+        var fatte = leggibili().filter(function (v) { return v.stato === 'inviata'; }).length;
+        avanzamento.textContent = 'Non chiudere questa pagina finché non è finito. Inviate ' + fatte + ' di ' + leggibili().length + '.';
+      } else if (tutteInviate) {
+        avanzamento.className = 'stato-lettura stato-inviata';
+        avanzamento.textContent = elenco.length === leggibili().length
+          ? '✅ Fatto: tutte le foto sono state inviate. Grazie! Puoi svuotare l\'elenco e caricarne altre.'
+          : '✅ Fatto: le foto leggibili sono state inviate. Grazie! Puoi svuotare l\'elenco e caricarne altre.';
+      } else if (esitoInvio && esitoInvio.nonInviate) {
+        avanzamento.className = 'stato-lettura errore-testo';
+        avanzamento.textContent = esitoInvio.inviate + ' foto inviate, ' + esitoInvio.nonInviate + ' non inviate. Guarda i messaggi sotto ogni foto e riprova.';
+      } else {
+        avanzamento.textContent = '';
+      }
+    }
+
+    // Aggiorna solo le barre di avanzamento (chiamato spesso durante il caricamento).
+    var ultimoAggiornamento = 0;
+    function aggiornaBarre() {
+      var ora = Date.now();
+      if (ora - ultimoAggiornamento < 150) return;
+      ultimoAggiornamento = ora;
+      elenco.forEach(function (v) {
+        if (v.barra) v.barra.value = v.progresso;
+        if (v.testoBarra) v.testoBarra.textContent = 'Invio in corso… ' + Math.round(v.progresso * 100) + '%';
+      });
+    }
+
+    function avvisoUscita(evento) {
+      evento.preventDefault();
+      evento.returnValue = '';
+    }
+
+    async function inviaFoto() {
+      if (inviando || inCorso) return;
+      var voci = daInviare();
+      if (!voci.length) return;
+      if (!idInvio) idInvio = nuovoUuid();
+      inviando = true;
+      esitoInvio = null;
+      window.addEventListener('beforeunload', avvisoUscita);
+      ridisegna();
+      try {
+        esitoInvio = await CaiInvio.invia({
+          voci: voci,
+          idInvio: idInvio,
+          dataSopralluogo: campoData.value,
+          totaleFoto: leggibili().length,
+          api: window.CaiApi.chiedi,
+          aggiorna: function (leggero) { if (leggero) aggiornaBarre(); else ridisegna(); },
+        });
+      } catch (errore) {
+        console.error('Invio interrotto:', errore);
+        voci.forEach(function (v) { if (v.stato === 'in_invio') { v.stato = v.idFileDrive ? 'caricata' : 'errore'; v.errore = 'L\'invio si è interrotto. Premi «Invia» per riprovare.'; } });
+        esitoInvio = { inviate: leggibili().filter(function (v) { return v.stato === 'inviata'; }).length, nonInviate: daInviare().length };
+      } finally {
+        inviando = false;
+        window.removeEventListener('beforeunload', avvisoUscita);
+        ridisegna();
+      }
     }
 
     async function aggiungiFoto(file, nome) {
@@ -240,7 +380,11 @@
       var esito = await CaiExif.leggi(file);
       if (esito.formato === 'altro' && !esito.errore) { ignorati.push(nome); return false; }
       chiavi[chiave] = true;
-      var voce = { chiave: chiave, nome: nome, file: file, esito: esito, anteprima: null };
+      var voce = {
+        chiave: chiave, nome: nome, file: file, esito: esito, anteprima: null,
+        idFoto: nuovoUuid(), tipo: ESTENSIONI[estensione(nome)],
+        stato: 'da_inviare', progresso: 0, errore: null, idFileDrive: null, barra: null, testoBarra: null,
+      };
       elenco.push(voce);
       voce.anteprima = await creaAnteprima(file);
       return true;
@@ -306,11 +450,17 @@
       var scelti = campo.files;
       aggiungi(scelti).then(function () { campo.value = ''; });
     });
+    campoData.addEventListener('input', function () { dataModificata = true; });
+    pulsanteInvia.addEventListener('click', inviaFoto);
     svuota.addEventListener('click', function () {
+      if (inviando) return;
       elenco.forEach(liberaAnteprima);
       elenco = [];
       ignorati = [];
       chiavi = {};
+      idInvio = null;
+      dataModificata = false;
+      esitoInvio = null;
       stato.textContent = '';
       ridisegna();
     });

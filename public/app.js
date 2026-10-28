@@ -3,7 +3,8 @@
 (function () {
   'use strict';
 
-  var tokenId = null; // ID token di Google, solo in memoria
+  var sessione = null; // { token, scade }: biglietto di sessione del sito, solo in memoria
+  var rinnovo = null; // rinnovo in corso, condiviso tra chiamate contemporanee
   var configurazione = null;
   var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
 
@@ -51,24 +52,70 @@
     });
   }
 
-  function mostraAccesso() {
-    tokenId = null;
+  function mostraAccesso(avviso) {
+    sessione = null;
     mostraUtente(null);
+    $('accesso-avviso').textContent = avviso || '';
+    $('accesso-avviso').hidden = !avviso;
     mostra('accesso');
   }
 
-  // Dopo l'accesso con Google: chiede al server chi sei e che ruolo hai.
+  // Sessione scaduta o non più valida: nuovo accesso con Google. Le foto già scelte restano in elenco.
+  function sessioneScaduta() {
+    mostraAccesso('La sessione è scaduta. Accedi di nuovo: le foto che hai scelto restano in elenco.');
+  }
+
+  // Rinnova il biglietto di sessione quando mancano meno di 2 ore alla scadenza.
+  async function assicuraSessione() {
+    if (!sessione) throw new Error('nessuna_sessione');
+    if (sessione.scade - Date.now() / 1000 > 2 * 60 * 60) return;
+    if (!rinnovo) {
+      rinnovo = chiedi('/api/sessione', { method: 'POST', headers: { Authorization: 'Bearer ' + sessione.token } })
+        .then(function (r) {
+          if (r.stato === 200 && r.corpo && r.corpo.sessione) {
+            sessione = { token: r.corpo.sessione, scade: r.corpo.scade };
+          }
+          return r;
+        })
+        .finally(function () { rinnovo = null; });
+    }
+    var r = await rinnovo;
+    if (r.stato === 401) {
+      sessioneScaduta();
+      throw new Error('sessione_scaduta');
+    }
+    // Un guasto passeggero del rinnovo non blocca: il biglietto attuale vale ancora.
+  }
+
+  // Chiamata alle funzioni del server con il biglietto di sessione. Restituisce { stato, corpo }.
+  // opzioni: { method, body } (body è un oggetto, spedito come JSON).
+  async function chiediAlServer(url, opzioni) {
+    await assicuraSessione();
+    var o = opzioni || {};
+    var risposta = await chiedi(url, {
+      method: o.method || 'GET',
+      headers: Object.assign({ Authorization: 'Bearer ' + sessione.token }, o.body ? { 'Content-Type': 'application/json' } : {}),
+      body: o.body ? JSON.stringify(o.body) : undefined,
+    });
+    if (risposta.stato === 401) sessioneScaduta();
+    return risposta;
+  }
+  window.CaiApi = { chiedi: chiediAlServer };
+
+  // Dopo l'accesso con Google: il server verifica l'ID token, controlla il foglio e rilascia
+  // il biglietto di sessione con ruolo e nome.
   async function dopoAccesso(credenziale) {
-    tokenId = credenziale.credential;
+    var tokenId = credenziale.credential;
     mostra('caricamento');
     var r;
     try {
-      r = await chiedi('/api/me', { headers: { Authorization: 'Bearer ' + tokenId } });
+      r = await chiedi('/api/sessione', { method: 'POST', headers: { Authorization: 'Bearer ' + tokenId } });
     } catch (e) {
       return mostraErrore('Connessione non riuscita. Controlla internet e riprova.');
     }
 
-    if (r.stato === 200 && r.corpo) {
+    if (r.stato === 200 && r.corpo && r.corpo.sessione) {
+      sessione = { token: r.corpo.sessione, scade: r.corpo.scade };
       mostraUtente(r.corpo.nome);
       if (r.corpo.ruolo === 'volontario') {
         if (!caricamento) caricamento = window.Carica.avvia($('carica-contenuto'));
@@ -83,7 +130,7 @@
 
     var codice = r.corpo && r.corpo.errore;
     if (r.stato === 401) {
-      return mostraAccesso(); // sessione scaduta o token non valido: nuovo accesso
+      return mostraAccesso(); // token di Google non valido o scaduto: nuovo accesso
     }
     if (codice === 'non_abilitato') {
       $('non-abilitato-email').textContent = emailDaToken(tokenId);

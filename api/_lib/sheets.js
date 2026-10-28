@@ -68,7 +68,11 @@ function clientGoogle() {
   if (!auth) {
     auth = new GoogleAuth({
       credentials: leggiCredenziali(),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      scopes: [
+        'https://www.googleapis.com/auth/spreadsheets',
+        // Solo i file creati dall'account di servizio (le foto caricate dal sito), non tutto il Drive.
+        'https://www.googleapis.com/auth/drive.file',
+      ],
     });
   }
   return auth.getClient();
@@ -108,4 +112,35 @@ async function leggiScheda(nomeScheda) {
   });
 }
 
-module.exports = { ErroApi, variabile, leggiScheda };
+// Aggiunge righe in fondo a una scheda (mai riscrittura del contenuto esistente).
+// Ogni riga è un oggetto { intestazione: valore }; le colonne si trovano per nome nella riga 1.
+// Valori scritti "così come sono" (RAW): nessuna formula può nascere da un nome di file o da una nota.
+async function aggiungiRighe(nomeScheda, oggetti) {
+  if (!oggetti.length) return;
+  const idFoglio = encodeURIComponent(variabile('SHEET_ID'));
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${idFoglio}/values/`;
+  try {
+    const client = await clientGoogle();
+    const testata = await client.request({ url: base + encodeURIComponent(`${nomeScheda}!1:1`) });
+    const intestazioni = ((testata.data && testata.data.values && testata.data.values[0]) || [])
+      .map((h) => String(h).trim().toLowerCase());
+    Object.keys(oggetti[0]).forEach((chiave) => {
+      if (!intestazioni.includes(chiave)) {
+        throw new ErroApi(500, 'errore_foglio', `Nella scheda "${nomeScheda}" manca la colonna "${chiave}"`);
+      }
+    });
+    const valori = oggetti.map((o) => intestazioni.map((h) => (o[h] === undefined || o[h] === null ? '' : o[h])));
+    await client.request({
+      url: `${base}${encodeURIComponent(`${nomeScheda}!A1`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      method: 'POST',
+      data: { values: valori },
+    });
+  } catch (errore) {
+    if (errore instanceof ErroApi) throw errore;
+    const stato = errore.response && errore.response.status;
+    console.error(`Scrittura nella scheda "${nomeScheda}" non riuscita (HTTP ${stato || '?'}):`, errore.message);
+    throw new ErroApi(500, 'errore_foglio', `Impossibile scrivere nella scheda "${nomeScheda}"`);
+  }
+}
+
+module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, clientGoogle };
