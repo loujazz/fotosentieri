@@ -52,3 +52,35 @@ button.secondario {
 }
 .vista > button.secondario { padding: 14px 24px; }
 #pulsante-google { min-height: 50px; }
+
+/* Vista "Carica foto" */
+.scelta-file { display: block; margin: 0 0 16px; }
+.scelta-file input[type=file] { display: none; }
+.pulsante-finto {
+  display: inline-block;
+  background: var(--verde);
+  color: #fff;
+  padding: 16px 28px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pulsante-finto:hover { background: var(--verde-scuro); }
+.nota { font-size: .85rem; color: var(--grigio); margin: 4px 0; }
+.stato-lettura { min-height: 1.5em; margin: 8px 0; }
+.errore-testo, .avviso-testo { color: #b13a0b; font-weight: 600; }
+.riepilogo-foto { background: #fff; border-radius: 12px; padding: 14px 16px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.riepilogo-foto.vuoto { display: none; }
+.lista-foto { display: grid; gap: 12px; margin: 12px 0; }
+.foto { display: flex; gap: 14px; background: #fff; border-radius: 12px; border-left: 10px solid #999; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.foto.ok { border-left-color: #2f9e44; }
+.foto.avviso { border-left-color: #e8a700; }
+.foto.errore { border-left-color: #d9480f; }
+.foto .anteprima { width: 120px; min-width: 120px; height: 90px; object-fit: cover; border-radius: 8px; background: #e9ece6; }
+.foto .senza-immagine { display: flex; align-items: center; justify-content: center; text-align: center; font-size: .75rem; color: var(--grigio); padding: 4px; }
+.dati-foto { min-width: 0; }
+.nome-foto { display: block; word-break: break-all; font-size: .95rem; }
+.esito-foto { font-weight: 700; margin-top: 4px; }
+button.piccolo { padding: 6px 12px; font-size: .85rem; margin-top: 8px; }
+.ignorati { margin: 12px 0; font-size: .9rem; color: var(--grigio); }
+@media (max-width: 480px) { .foto { flex-direction: column; } }

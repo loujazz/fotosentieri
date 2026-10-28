@@ -5,6 +5,7 @@
 
   var tokenId = null; // ID token di Google, solo in memoria
   var configurazione = null;
+  var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
 
   var $ = function (id) { return document.getElementById(id); };
   var viste = ['caricamento', 'accesso', 'non-abilitato', 'errore', 'volontario', 'admin'];
@@ -70,6 +71,7 @@
     if (r.stato === 200 && r.corpo) {
       mostraUtente(r.corpo.nome);
       if (r.corpo.ruolo === 'volontario') {
+        if (!caricamento) caricamento = window.Carica.avvia($('carica-contenuto'));
         return mostra('volontario');
       }
       if (r.corpo.ruolo === 'admin' || r.corpo.ruolo === 'super_admin') {
@@ -105,6 +107,7 @@
   }
 
   function esci() {
+    if (caricamento) caricamento.azzera();
     if (window.google && window.google.accounts) window.google.accounts.id.disableAutoSelect();
     mostraAccesso();
   }
