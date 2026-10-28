@@ -29,6 +29,7 @@ I volontari della sentieristica del CAI Bologna "Mario Fantin" segnalano problem
 - **28/10/2026, documenti nel repository:** in `docs/` ci sono la specifica OpenAPI di OSM2CAI, la procedura per i volontari e la pagina di test dell'EXIF; dall'ambiente di sviluppo non si raggiungono i server del CAI, quindi la specifica è la fonte per i passi sulla sincronizzazione.
 - **28/10/2026, chiavi dell'account di servizio:** l'organizzazione `caibo.it` blocca la creazione di chiavi (policy `iam.disableServiceAccountKeyCreation`, legacy). Il blocco è stato tolto **solo per il progetto** `segnalazioni-sentieri` (policy del progetto con override, applicazione disattivata). In alternativa più sicura, da valutare in futuro: federazione delle identità per i workload, senza chiavi scaricate.
 - **28/10/2026, foglio dati:** deve essere un vero Foglio Google nel Drive condiviso (un `.xlsx` caricato va convertito con «Salva come Fogli Google»). `SHEET_ID` è solo la parte dell'indirizzo tra `/d/` e `/edit` (circa 44 caratteri). In caso di errore di lettura il server scrive nei log una riga `Diagnostica foglio:` con motivo, email del robot e inizio/fine dell'ID.
+- **28/10/2026, lettura EXIF:** parser proprio senza librerie in `public/exif.js` (JPEG e HEIC), che non lancia eccezioni: un file illeggibile torna con `errore` valorizzato, mai in silenzio. Coordinate 0,0 trattate come posizione assente. La data di scatto è l'ora locale del telefono, senza fuso.
 
 ## Ruoli
 
@@ -96,11 +97,12 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - L'API OSM2CAI ha documentazione ufficiale (Swagger, versione 1.0.0).
 - 28/10/2026, scheletro (solo lato server, con Google simulato): ruoli `volontario`, `admin`, `super_admin`; rifiuto di utente non nel foglio, con `attivo` = `NO` o con ruolo non valido; rifiuto di dominio diverso da `caibo.it` (anche `caibo.it.evil.com` e Gmail); 401 senza token o con token non valido; lettura della `private_key` con a-capo normali, con doppio escape e con a-capo veri; errore 500 chiaro se il JSON è rotto.
 - 28/10/2026, in produzione su Vercel (`https://fotosentieri.vercel.app/`): login reale con Google con account `@caibo.it`, consenso Interno, origine autorizzata, lettura reale del foglio con l'account di servizio, ruolo `super_admin` letto dalla scheda `utenti` e vista «Dashboard» mostrata.
+- 28/10/2026, lettore GPS (`public/exif.js`) provato con file di prova generati da me, non con foto reali: JPEG con GPS (anche sud/ovest, quota sotto il mare, coordinate 0,0), JPEG con EXIF senza GPS, JPEG senza EXIF, JPEG troncato, PNG e file qualsiasi; HEIC creati con libheif (con GPS, senza GPS, senza EXIF, e uno da 5 MB). Provato sia da Node sia in Chromium con la pagina `public/test-exif.html`.
 
 ## Da verificare
 
 - Posizione nelle foto scaricate da Google Foto con qualità "Risparmio spazio" attiva, e con iPhone.
-- Lettura delle coordinate dei file HEIC.
+- Lettura delle coordinate su foto HEIC e JPEG reali (iPhone e Android, anche scaricate da Google Foto): usare `public/test-exif.html` sul sito pubblicato. Mai provati: EXIF in big-endian, HEIC con più di un blocco di dati EXIF.
 - Apertura di ZIP grandi nel browser; limiti di memoria.
 - Se tutti i volontari possono avere un account `@caibo.it`: licenze disponibili, creazione degli account, verifica in due passaggi.
 - Conferma del CAI (`catastorei@cai.it`) su uso e frequenza dell'API.

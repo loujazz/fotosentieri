@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prova posizione foto</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .scelta { display: block; text-align: center; margin: 16px 0; }
+    input[type=file] { display: none; }
+    .pulsante-finto { display: inline-block; background: var(--verde); color: #fff; padding: 14px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .scheda { background: #fff; border-radius: 12px; border-left: 10px solid #999; padding: 14px 16px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    .scheda.ok { border-left-color: #2f9e44; }
+    .scheda.no { border-left-color: #d9480f; }
+    .scheda.avviso { border-left-color: #e8a700; }
+    .scheda h3 { margin: 0 0 4px; font-size: 1rem; word-break: break-all; }
+    .esito { font-weight: 700; margin-bottom: 6px; }
+    dl { margin: 0; font-size: .9rem; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+    dt { color: var(--grigio); }
+    dd { margin: 0; word-break: break-word; }
+    .riepilogo { white-space: pre-wrap; font-size: .8rem; background: #e9ece6; border-radius: 8px; padding: 10px; margin-top: 20px; word-break: break-word; }
+    .nota { font-size: .9rem; color: var(--grigio); }
+  </style>
+</head>
+<body>
+  <header class="testata">
+    <h1>Prova posizione foto</h1>
+    <p class="sottotitolo">Pagina di controllo: le foto non vengono caricate, restano sul tuo computer.</p>
+  </header>
+  <main>
+    <p class="messaggio">Scegli una o più foto (JPEG o HEIC) scaricate sul computer. La pagina dice se dentro il file c'è la posizione.</p>
+    <label class="scelta">
+      <span class="pulsante-finto">Scegli le foto</span>
+      <input id="foto" type="file" multiple accept=".jpg,.jpeg,.heic,.heif,image/jpeg,image/heic,image/heif">
+    </label>
+    <div id="risultati"></div>
+    <button id="copia" type="button" class="secondario" hidden>Copia il riepilogo</button>
+    <div id="riepilogo" class="riepilogo" hidden></div>
+    <p class="nota" id="ambiente"></p>
+  </main>
+  <script src="exif.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      var risultati = document.getElementById('risultati');
+      var copia = document.getElementById('copia');
+      var riepilogo = document.getElementById('riepilogo');
+      var righe = [];
+      document.getElementById('ambiente').textContent = 'Browser: ' + navigator.userAgent;
+
+      function esc(s) {
+        return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+      }
+
+      function scheda(classe, nome, esito, righeDati, sintesi) {
+        var d = document.createElement('div');
+        d.className = 'scheda ' + classe;
+        var html = '<h3>' + esc(nome) + '</h3><div class="esito">' + esito + '</div><dl>';
+        righeDati.forEach(function (r) { html += '<dt>' + esc(r[0]) + '</dt><dd>' + r[1] + '</dd>'; });
+        d.innerHTML = html + '</dl>';
+        risultati.appendChild(d);
+        righe.push(sintesi);
+        riepilogo.textContent = righe.join('\n') + '\n' + navigator.userAgent;
+        riepilogo.hidden = false;
+        copia.hidden = false;
+      }
+
+      async function esamina(file) {
+        var r = await CaiExif.leggi(file);
+        var dati = [
+          ['Formato', esc(r.formato.toUpperCase())],
+          ['Dimensione', (file.size / 1048576).toFixed(2) + ' MB'],
+        ];
+        if (r.marca || r.modello) dati.push(['Fotocamera', esc(((r.marca || '') + ' ' + (r.modello || '')).trim())]);
+        if (r.dataScatto) dati.push(['Data di scatto', esc(r.dataScatto.replace('T', ' '))]);
+        var base = file.name + ' | ' + r.formato;
+
+        if (r.errore) {
+          dati.push(['Dettaglio', esc(r.errore)]);
+          return scheda('avviso', file.name, '⚠️ File non leggibile', dati, base + ' | ERRORE: ' + r.errore);
+        }
+        if (r.formato === 'altro') {
+          return scheda('avviso', file.name, '⚠️ Formato non supportato (servono JPEG o HEIC)', dati, base + ' | non supportato');
+        }
+        if (r.lat !== null) {
+          var coord = r.lat.toFixed(6) + ', ' + r.lon.toFixed(6);
+          dati.push(['Coordinate', esc(coord)]);
+          if (r.quota !== null) dati.push(['Quota', Math.round(r.quota) + ' m']);
+          dati.push(['Mappa', '<a href="https://www.openstreetmap.org/?mlat=' + r.lat + '&mlon=' + r.lon + '#map=17/' + r.lat + '/' + r.lon + '" target="_blank" rel="noopener">Apri su OpenStreetMap</a>']);
+          return scheda('ok', file.name, '✅ Posizione presente', dati, base + ' | GPS SI | ' + coord + (r.dataScatto ? ' | ' + r.dataScatto : ''));
+        }
+        var motivo = !r.exif ? 'Nessun metadato nel file' : (r.gpsZero ? 'Posizione a 0,0 (non valida)' : 'Metadati presenti ma senza posizione');
+        dati.push(['Motivo', esc(motivo)]);
+        scheda('no', file.name, '❌ Posizione assente', dati, base + ' | GPS NO | ' + motivo);
+      }
+
+      document.getElementById('foto').addEventListener('change', async function (e) {
+        var elenco = Array.prototype.slice.call(e.target.files);
+        e.target.value = '';
+        for (var i = 0; i < elenco.length; i++) {
+          try { await esamina(elenco[i]); }
+          catch (errore) { scheda('avviso', elenco[i].name, '⚠️ Errore imprevisto', [['Dettaglio', esc(errore && errore.message || errore)]], elenco[i].name + ' | errore imprevisto'); }
+        }
+      });
+
+      copia.addEventListener('click', function () {
+        try {
+          navigator.clipboard.writeText(riepilogo.textContent).then(
+            function () { copia.textContent = 'Copiato ✔'; },
+            function () { copia.textContent = 'Copia non riuscita: seleziona il testo a mano'; });
+        } catch (e) { copia.textContent = 'Copia non riuscita: seleziona il testo a mano'; }
+      });
+    })();
+  </script>
+</body>
+</html>
