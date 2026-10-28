@@ -109,4 +109,50 @@ function fileDrive(idFile, dimensione) {
   };
 }
 
-module.exports = { impronta, creaSessioneCaricamento, metadati, fileDrive, traduciErrore };
+// Miniatura generata da Drive, letta con le credenziali dell'account di servizio (non è mai un indirizzo
+// pubblico). "dimensione" è il lato lungo in pixel. Lancia ErroApi 404 'anteprima_non_disponibile' se Drive
+// non ha (ancora) una miniatura per il file.
+async function miniatura(idFile, dimensione) {
+  const meta = await chiedi({
+    url: `${API}${encodeURIComponent(idFile)}?supportsAllDrives=true&fields=thumbnailLink`,
+  }, 'lettura della miniatura');
+  const indirizzo = meta.data && meta.data.thumbnailLink;
+  let url;
+  try {
+    url = new URL(indirizzo);
+  } catch (errore) {
+    throw new ErroApi(404, 'anteprima_non_disponibile');
+  }
+  if (url.protocol !== 'https:' || !/(^|\.)(googleusercontent\.com|google\.com|googleapis\.com)$/.test(url.hostname)) {
+    throw new ErroApi(404, 'anteprima_non_disponibile');
+  }
+  const base = indirizzo.replace(/=s\d+[^=]*$/, '');
+  let risposta;
+  try {
+    risposta = await chiedi({ url: `${base}=s${dimensione}`, responseType: 'arraybuffer' }, 'lettura della miniatura');
+  } catch (errore) {
+    if (errore instanceof ErroApi && errore.codice === 'drive_non_trovato') throw new ErroApi(404, 'anteprima_non_disponibile');
+    throw errore;
+  }
+  return {
+    dati: Buffer.from(risposta.data),
+    tipo: valoreIntestazione(risposta.headers, 'content-type') || 'image/jpeg',
+  };
+}
+
+// Sposta un file da una cartella a un'altra. Ripetibile: se è già nella cartella di arrivo non fa nulla.
+async function sposta(idFile, cartellaArrivo) {
+  const meta = await metadati(idFile);
+  const genitori = meta.parents || [];
+  if (genitori.length === 1 && genitori[0] === cartellaArrivo) return false;
+  const daTogliere = genitori.filter((g) => g !== cartellaArrivo);
+  await chiedi({
+    url: `${API}${encodeURIComponent(idFile)}?supportsAllDrives=true&addParents=${encodeURIComponent(cartellaArrivo)}` +
+      (daTogliere.length ? `&removeParents=${encodeURIComponent(daTogliere.join(','))}` : '') + '&fields=id',
+    method: 'PATCH',
+    data: {},
+  }, 'spostamento del file');
+  return true;
+}
+
+module.exports = { impronta, creaSessioneCaricamento, metadati, fileDrive, miniatura, sposta, traduciErrore };

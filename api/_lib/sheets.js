@@ -80,10 +80,12 @@ function clientGoogle() {
 
 // Restituisce le righe di una scheda come oggetti { intestazione: valore }.
 // Le colonne si trovano per nome dell'intestazione (riga 1), non per posizione.
-async function leggiScheda(nomeScheda) {
+// Con { conRiga: true } ogni oggetto ha anche _riga, il numero di riga nel foglio (la riga 1 è l'intestazione).
+// I valori si leggono "non formattati": un numero come 44,4949 (formato italiano) arriva come 44.4949.
+async function leggiScheda(nomeScheda, opzioni) {
   const idFoglio = variabile('SHEET_ID');
   const intervallo = encodeURIComponent(`${nomeScheda}!A:Z`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(idFoglio)}/values/${intervallo}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(idFoglio)}/values/${intervallo}?valueRenderOption=UNFORMATTED_VALUE`;
   let risposta;
   try {
     const client = await clientGoogle();
@@ -103,11 +105,13 @@ async function leggiScheda(nomeScheda) {
   const righe = (risposta.data && risposta.data.values) || [];
   if (righe.length === 0) return [];
   const intestazioni = righe[0].map((h) => String(h).trim().toLowerCase());
-  return righe.slice(1).map((riga) => {
+  const conRiga = Boolean(opzioni && opzioni.conRiga);
+  return righe.slice(1).map((riga, indice) => {
     const oggetto = {};
     intestazioni.forEach((nome, i) => {
       if (nome) oggetto[nome] = riga[i] === undefined ? '' : String(riga[i]).trim();
     });
+    if (conRiga) oggetto._riga = indice + 2;
     return oggetto;
   });
 }
@@ -143,4 +147,44 @@ async function aggiungiRighe(nomeScheda, oggetti) {
   }
 }
 
-module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, clientGoogle };
+function letteraColonna(indice) {
+  let n = indice + 1;
+  let lettera = '';
+  while (n > 0) {
+    const resto = (n - 1) % 26;
+    lettera = String.fromCharCode(65 + resto) + lettera;
+    n = Math.floor((n - 1) / 26);
+  }
+  return lettera;
+}
+
+// Cambia solo le celle indicate, in righe già esistenti (mai riscrittura della scheda).
+// modifiche: [{ riga, valori: { colonna: valore } }], con "riga" come numero di riga del foglio.
+async function aggiornaCelle(nomeScheda, modifiche) {
+  if (!modifiche.length) return;
+  const idFoglio = encodeURIComponent(variabile('SHEET_ID'));
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${idFoglio}/values`;
+  try {
+    const client = await clientGoogle();
+    const testata = await client.request({ url: `${base}/${encodeURIComponent(`${nomeScheda}!1:1`)}` });
+    const intestazioni = ((testata.data && testata.data.values && testata.data.values[0]) || [])
+      .map((h) => String(h).trim().toLowerCase());
+    const dati = [];
+    modifiche.forEach((m) => {
+      if (!Number.isInteger(m.riga) || m.riga < 2) throw new ErroApi(500, 'errore_foglio', 'Numero di riga non valido');
+      Object.keys(m.valori).forEach((colonna) => {
+        const i = intestazioni.indexOf(colonna);
+        if (i === -1) throw new ErroApi(500, 'errore_foglio', `Nella scheda "${nomeScheda}" manca la colonna "${colonna}"`);
+        dati.push({ range: `${nomeScheda}!${letteraColonna(i)}${m.riga}`, values: [[m.valori[colonna]]] });
+      });
+    });
+    await client.request({ url: `${base}:batchUpdate`, method: 'POST', data: { valueInputOption: 'RAW', data: dati } });
+  } catch (errore) {
+    if (errore instanceof ErroApi) throw errore;
+    const stato = errore.response && errore.response.status;
+    console.error(`Aggiornamento della scheda "${nomeScheda}" non riuscito (HTTP ${stato || '?'}):`, errore.message);
+    throw new ErroApi(500, 'errore_foglio', `Impossibile aggiornare la scheda "${nomeScheda}"`);
+  }
+}
+
+module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, aggiornaCelle, clientGoogle };
