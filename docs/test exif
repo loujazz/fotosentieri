@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test GPS foto – CAI Bologna</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:16px;background:#f4f5f2;color:#1d2a1f;line-height:1.45}
+  main{max-width:560px;margin:0 auto}
+  h1{font-size:1.25rem;margin:0 0 4px}
+  p.sub{margin:0 0 16px;color:#4a5a4d;font-size:.95rem}
+  .btn{display:block;width:100%;padding:16px;margin:8px 0;border-radius:12px;border:0;font-size:1.05rem;font-weight:600;text-align:center;cursor:pointer}
+  .a{background:#2f6b3a;color:#fff}
+  .b{background:#fff;color:#2f6b3a;border:2px solid #2f6b3a}
+  .hint{font-size:.85rem;color:#4a5a4d;margin:0 0 12px}
+  input[type=file]{display:none}
+  .card{background:#fff;border-radius:12px;padding:14px;margin:12px 0;border-left:8px solid #999;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .ok{border-left-color:#2f9e44}
+  .no{border-left-color:#d9480f}
+  .warn{border-left-color:#e8a700}
+  .card h2{font-size:1rem;margin:0 0 6px;word-break:break-all}
+  .verdict{font-weight:700;font-size:1.05rem;margin-bottom:6px}
+  dl{margin:0;font-size:.9rem;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+  dt{color:#4a5a4d}
+  dd{margin:0;word-break:break-word}
+  a{color:#1c5fa8}
+  .env{font-size:.8rem;color:#4a5a4d;margin-top:20px;word-break:break-word;background:#e9ece6;padding:10px;border-radius:8px}
+  .copy{margin-top:12px;padding:12px;font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Test posizione GPS nelle foto</h1>
+  <p class="sub">Scegli una o più foto scattate con la posizione attiva. La pagina controlla se il GPS è dentro il file. Le foto non vengono caricate né salvate: restano sul telefono.</p>
+
+  <label class="btn a" for="inA">Prova A – Scegli foto (galleria)</label>
+  <input id="inA" type="file" accept="image/*" multiple>
+  <p class="hint">Il selettore foto normale, quello che userebbero i volontari.</p>
+
+  <label class="btn b" for="inB">Prova B – Scegli file (selettore file)</label>
+  <input id="inB" type="file" multiple>
+  <p class="hint">Il selettore generico dei file. Su Android a volte conserva più dati. Se possibile prova entrambi con la stessa foto.</p>
+
+  <div id="out"></div>
+
+  <button class="btn b copy" id="copyBtn" style="display:none">Copia il riepilogo</button>
+
+  <div class="env" id="env"></div>
+</main>
+
+<script>
+(function(){
+  var out = document.getElementById('out');
+  var env = document.getElementById('env');
+  var copyBtn = document.getElementById('copyBtn');
+  var lines = [];
+
+  env.textContent = 'Dispositivo/browser: ' + navigator.userAgent;
+
+  // ---- Lettore EXIF minimale (solo JPEG) ----
+  var TYPE_SIZE = {1:1,2:1,3:2,4:4,5:8,7:1,9:4,10:8};
+
+  function str(dv, pos, n){
+    var s = '';
+    for (var i=0;i<n;i++){ var c = dv.getUint8(pos+i); if(c===0) break; s += String.fromCharCode(c); }
+    return s;
+  }
+
+  function parseJpeg(buf){
+    var dv = new DataView(buf);
+    if (dv.byteLength < 4 || dv.getUint16(0) !== 0xFFD8) return {format:'non-jpeg'};
+    var off = 2;
+    while (off + 4 < dv.byteLength){
+      if (dv.getUint8(off) !== 0xFF) break;
+      var marker = dv.getUint8(off+1);
+      if (marker === 0xDA) break;
+      var len = dv.getUint16(off+2);
+      if (marker === 0xE1 && str(dv, off+4, 4) === 'Exif'){
+        return parseTiff(dv, off+10);
+      }
+      off += 2 + len;
+    }
+    return {format:'jpeg', exif:false};
+  }
+
+  function parseTiff(dv, start){
+    var little = dv.getUint16(start) === 0x4949;
+    function u16(p){ return dv.getUint16(p, little); }
+    function u32(p){ return dv.getUint32(p, little); }
+
+    function readIFD(rel){
+      var base = start + rel;
+      var n = u16(base);
+      var map = {};
+      for (var i=0;i<n;i++){
+        var o = base + 2 + i*12;
+        var tag = u16(o), type = u16(o+2), count = u32(o+4);
+        var size = (TYPE_SIZE[type]||1) * count;
+        var valPos = size <= 4 ? o+8 : start + u32(o+8);
+        map[tag] = {type:type, count:count, pos:valPos};
+      }
+      return map;
+    }
+    function ascii(e){ return e ? str(dv, e.pos, e.count) : null; }
+    function rationals(e){
+      var r = [];
+      for (var i=0;i<e.count;i++){
+        var num = u32(e.pos + i*8), den = u32(e.pos + i*8 + 4);
+        r.push(den ? num/den : 0);
+      }
+      return r;
+    }
+    function dms(a){ return a[0] + (a[1]||0)/60 + (a[2]||0)/3600; }
+
+    var res = {format:'jpeg', exif:true};
+    try{
+      var ifd0 = readIFD(u32(start+4));
+      res.make = ascii(ifd0[0x010F]);
+      res.model = ascii(ifd0[0x0110]);
+
+      if (ifd0[0x8769]){
+        var exifIfd = readIFD(u32(ifd0[0x8769].pos));
+        res.date = ascii(exifIfd[0x9003]) || ascii(exifIfd[0x9004]);
+      }
+      if (ifd0[0x8825]){
+        var gps = readIFD(u32(ifd0[0x8825].pos));
+        if (gps[2] && gps[4]){
+          var lat = dms(rationals(gps[2]));
+          var lon = dms(rationals(gps[4]));
+          if ((ascii(gps[1])||'N').charAt(0) === 'S') lat = -lat;
+          if ((ascii(gps[3])||'E').charAt(0) === 'W') lon = -lon;
+          if (lat !== 0 || lon !== 0){
+            res.lat = lat; res.lon = lon;
+          } else {
+            res.gpsZero = true;
+          }
+        }
+        if (gps[6]){
+          res.alt = rationals(gps[6])[0];
+        }
+        res.gpsBlock = true;
+      }
+    } catch(e){ res.parseError = String(e); }
+    return res;
+  }
+
+  function sniff(buf){
+    var b = new Uint8Array(buf.slice(0,16));
+    var txt = '';
+    for (var i=4;i<12;i++) txt += String.fromCharCode(b[i]);
+    if (txt.indexOf('ftyp') === 0) return 'heic';
+    return null;
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  function addCard(cls, name, verdict, rows, summary){
+    var d = document.createElement('div');
+    d.className = 'card ' + cls;
+    var html = '<h2>'+esc(name)+'</h2><div class="verdict">'+verdict+'</div><dl>';
+    rows.forEach(function(r){ html += '<dt>'+esc(r[0])+'</dt><dd>'+r[1]+'</dd>'; });
+    html += '</dl>';
+    d.innerHTML = html;
+    out.insertBefore(d, out.firstChild);
+    lines.push(summary);
+    copyBtn.style.display = 'block';
+  }
+
+  function handle(files, source){
+    Array.prototype.forEach.call(files, function(file){
+      file.slice(0, 262144).arrayBuffer().then(function(buf){
+        var rows = [
+          ['Prova', source],
+          ['Tipo file', esc(file.type || 'n/d')],
+          ['Dimensione', (file.size/1048576).toFixed(2) + ' MB']
+        ];
+        var kind = sniff(buf);
+        if (kind === 'heic'){
+          addCard('warn', file.name, '⚠️ File HEIC: non lo so leggere qui', rows,
+            source+' | '+file.name+' | HEIC non leggibile');
+          return;
+        }
+        var r = parseJpeg(buf);
+        if (r.format === 'non-jpeg'){
+          addCard('warn', file.name, '⚠️ Non è un JPEG, non lo so leggere', rows,
+            source+' | '+file.name+' | formato non JPEG ('+(file.type||'?')+')');
+          return;
+        }
+        if (r.make || r.model) rows.push(['Fotocamera', esc(((r.make||'')+' '+(r.model||'')).trim())]);
+        if (r.date) rows.push(['Data scatto', esc(r.date)]);
+
+        if (typeof r.lat === 'number'){
+          var coords = r.lat.toFixed(6)+', '+r.lon.toFixed(6);
+          rows.push(['Coordinate', esc(coords)]);
+          if (typeof r.alt === 'number') rows.push(['Quota', Math.round(r.alt)+' m']);
+          rows.push(['Mappa', '<a href="https://www.openstreetmap.org/?mlat='+r.lat+'&mlon='+r.lon+'#map=17/'+r.lat+'/'+r.lon+'" target="_blank" rel="noopener">Apri su OpenStreetMap</a>']);
+          addCard('ok', file.name, '✅ GPS PRESENTE', rows,
+            source+' | '+file.name+' | GPS SI | '+coords+(r.date?' | '+r.date:''));
+        } else if (!r.exif){
+          addCard('no', file.name, '❌ Nessun dato EXIF (tutti i metadati rimossi)', rows,
+            source+' | '+file.name+' | GPS NO | nessun EXIF');
+        } else {
+          rows.push(['Nota', r.gpsZero ? 'Blocco GPS presente ma a 0,0' : (r.gpsBlock ? 'Blocco GPS presente ma senza coordinate' : 'EXIF presente, ma senza GPS')]);
+          addCard('no', file.name, '❌ GPS ASSENTE', rows,
+            source+' | '+file.name+' | GPS NO | EXIF presente'+(r.date?' | '+r.date:''));
+        }
+      }).catch(function(e){
+        addCard('warn', file.name, '⚠️ Errore nella lettura', [['Dettaglio', esc(e)]],
+          source+' | '+file.name+' | errore');
+      });
+    });
+  }
+
+  document.getElementById('inA').addEventListener('change', function(e){
+    handle(e.target.files, 'A – galleria'); e.target.value = '';
+  });
+  document.getElementById('inB').addEventListener('change', function(e){
+    handle(e.target.files, 'B – selettore file'); e.target.value = '';
+  });
+
+  copyBtn.addEventListener('click', function(){
+    var text = lines.join('\n') + '\n' + navigator.userAgent;
+    try {
+      navigator.clipboard.writeText(text).then(function(){ copyBtn.textContent = 'Copiato ✔'; },
+        function(){ copyBtn.textContent = 'Copia non riuscita'; });
+    } catch(e){ copyBtn.textContent = 'Copia non riuscita'; }
+  });
+})();
+</script>
+</body>
+</html>
