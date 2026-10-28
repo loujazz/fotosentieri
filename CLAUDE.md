@@ -105,6 +105,7 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - 28/10/2026, pagina «Carica foto» (`public/carica.js`), provata in Chromium con ZIP di prova miei: ZIP non compressi, compressi (deflate) e con descrittori di dati; cartelle, `__MACOSX` e file non foto scartati; ZIP con compressione non supportata, troncato, finto e senza foto (messaggi chiari, nessun errore in console); foto sciolte miste (con/senza posizione, senza EXIF, troncata, PNG); ZIP da 211 MB (30 foto) e da 1,2 GB (170 foto da 7 MB) aperti in circa 7 e 36 secondi; file singolo troppo grande per la memoria segnalato come «troppo grande» invece di «danneggiato».
 - 28/10/2026, anteprima delle foto HEIC: visibile nel browser del responsabile (Mac); il browser la mostra se sa decodificare il formato.
 - 28/10/2026, pezzo 2c provato **solo con Google simulato** (Sheets e Drive finti in locale, browser Chromium): biglietti di sessione (firma, scadenza, rinnovo, limite di 7 giorni, email di altro dominio), ruoli (un admin non può inviare), validazioni delle richieste, origine non valida, un volontario non può confermare file altrui né aggiungere a un invio altrui, ripetizione della conferma senza duplicati, posizione e data riletti dal file (JPEG e HEIC), file originali identici, guasto passeggero con nuovo tentativo, Drive pieno con messaggio chiaro, foglio non raggiungibile con riprova della sola registrazione senza ricaricare.
+- 28/10/2026, pezzo 2c sul sito reale (`https://fotosentieri.vercel.app/`): il responsabile riferisce che login con biglietto di sessione e invio delle foto su Drive con registrazione nel foglio funzionano (non annotati i dettagli: numero di foto, ZIP o foto sciolte).
 
 ## Da verificare
 
@@ -117,7 +118,7 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 - Informativa privacy per le foto e per i dati degli autori.
 - Chi vede la mappa riservata: tutti gli account `@caibo.it` oppure solo admin e volontari abilitati.
 - Vista e permessi con un account `admin` e uno `volontario` (finora provato solo `super_admin`), e con un account non abilitato o con `attivo` = `NO`.
-- **Invio reale su Drive (priorità):** caricamento dal browser all'indirizzo della sessione (CORS con l'origine passata alla creazione), creazione di file nella cartella `Da approvare` con lo scope `drive.file`, quote e limiti di Drive, riga nel foglio; tutto provato solo con simulazioni. Serve `SESSION_SECRET` su Vercel e `FOLDER_DA_APPROVARE_ID`.
+- Invio su Drive con molte foto (100+), ZIP reali di Google Foto, volontari con account diversi dal responsabile, quote e limiti reali di Drive (provato dal responsabile in piccolo, il resto solo con simulazioni).
 - Rinnovo reale del biglietto di sessione dopo ore di uso e comportamento alla scadenza.
 - Caricamento di 100+ foto reali e di file grandi su reti lente (riprova da capo per foto, nessuna ripresa a metà file).
 
