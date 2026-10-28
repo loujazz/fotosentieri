@@ -6,6 +6,7 @@
   var sessione = null; // { token, scade }: biglietto di sessione del sito, solo in memoria
   var rinnovo = null; // rinnovo in corso, condiviso tra chiamate contemporanee
   var configurazione = null;
+  var pannello = null; // controllo della dashboard degli amministratori
   var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
 
   var $ = function (id) { return document.getElementById(id); };
@@ -13,6 +14,7 @@
 
   function mostra(nome) {
     viste.forEach(function (v) { $('vista-' + v).hidden = v !== nome; });
+    document.body.classList.toggle('largo', nome === 'admin'); // la dashboard usa più spazio
   }
 
   function mostraErrore(testo) {
@@ -100,7 +102,19 @@
     if (risposta.stato === 401) sessioneScaduta();
     return risposta;
   }
-  window.CaiApi = { chiedi: chiediAlServer };
+  // Come chiediAlServer ma per file (miniature): restituisce il Blob oppure lancia un errore con "stato".
+  async function bloccoDalServer(url) {
+    await assicuraSessione();
+    var risposta = await fetch(url, { headers: { Authorization: 'Bearer ' + sessione.token } });
+    if (risposta.status === 401) sessioneScaduta();
+    if (!risposta.ok) {
+      var errore = new Error('http_' + risposta.status);
+      errore.stato = risposta.status;
+      throw errore;
+    }
+    return risposta.blob();
+  }
+  window.CaiApi = { chiedi: chiediAlServer, blob: bloccoDalServer };
 
   // Dopo l'accesso con Google: il server verifica l'ID token, controlla il foglio e rilascia
   // il biglietto di sessione con ruolo e nome.
@@ -123,7 +137,9 @@
       }
       if (r.corpo.ruolo === 'admin' || r.corpo.ruolo === 'super_admin') {
         $('admin-ruolo').textContent = r.corpo.ruolo === 'super_admin' ? 'super amministratore' : 'amministratore';
-        return mostra('admin');
+        if (!pannello) pannello = window.Dashboard.avvia($('dashboard-contenuto'));
+        mostra('admin');
+        return pannello.ricarica();
       }
       return mostraErrore('Ruolo non riconosciuto. Avvisa un amministratore.');
     }
@@ -155,6 +171,7 @@
 
   function esci() {
     if (caricamento) caricamento.azzera();
+    if (pannello) pannello.azzera();
     if (window.google && window.google.accounts) window.google.accounts.id.disableAutoSelect();
     mostraAccesso();
   }
