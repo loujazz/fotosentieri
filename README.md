@@ -7,7 +7,7 @@ Servizio per i volontari della sentieristica del CAI Bologna «Mario Fantin»: c
 ## Struttura
 
 - `public/`: pagina web (HTML, CSS e JavaScript semplice, nessun bundler). `public/vendor/`: librerie copiate nel repository (fflate, Leaflet).
-- `api/`: **una sola funzione Vercel**, `api/[...ruta].js`, che smista tutti gli indirizzi `/api/...` ai gestori in `api/_gestori/` (il piano Hobby ammette al massimo 12 funzioni e ogni file in `api/` ne conta una; le cartelle con il trattino basso non contano). **Per aggiungere un indirizzo nuovo:** crea il gestore in `api/_gestori/` e aggiungilo all'elenco in `api/[...ruta].js`. I nomi qui sotto sono quelli dei gestori.
+- `api/`: **una sola funzione Vercel**, `api/ingresso.js`, che smista tutti gli indirizzi `/api/...` ai gestori in `api/_gestori/` (il piano Hobby ammette al massimo 12 funzioni e ogni file in `api/` ne conta una; le cartelle con il trattino basso non contano). **Per aggiungere un indirizzo nuovo:** crea il gestore in `api/_gestori/` e aggiungilo all'elenco in `api/ingresso.js`. I nomi qui sotto sono quelli dei gestori.
   - `me.js`: configurazione per la pagina di accesso e «chi sono». `sessione.js`: dopo l'accesso con Google rilascia (e rinnova) il biglietto di sessione del sito.
   - `etichette.js`: tipi di problema attivi (scheda `etichette`) più «Altro» per il menu del volontario; `admin/categorie.js`: gestione delle categorie da parte degli admin.
   - `carica/avvia.js` e `carica/conferma.js`: sessioni di caricamento su Drive e registrazione nel foglio (solo volontari).
