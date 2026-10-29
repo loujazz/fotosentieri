@@ -182,6 +182,37 @@
     svuota.type = 'button';
     svuota.hidden = true;
 
+    // Selezione multipla: si spuntano più foto e si dà a tutte insieme il tipo di problema e la nota.
+    var barraSel = el('div', 'barra-selezione');
+    var titoloSel = el('strong', 'titolo-selezione');
+    var rigaSelPulsanti = el('div', 'riga-pulsanti');
+    var selTutte = el('button', 'secondario piccolo', 'Seleziona tutte');
+    var selNessuna = el('button', 'secondario piccolo', 'Deseleziona');
+    selTutte.type = selNessuna.type = 'button';
+    rigaSelPulsanti.appendChild(selTutte);
+    rigaSelPulsanti.appendChild(selNessuna);
+    var etichettaSelProblema = el('label', 'campo-data');
+    etichettaSelProblema.appendChild(el('span', null, 'Che problema c\'è? (per le foto spuntate)'));
+    var selProblema = document.createElement('select');
+    etichettaSelProblema.appendChild(selProblema);
+    var etichettaSelNota = el('label', 'campo-data');
+    etichettaSelNota.appendChild(el('span', null, 'Nota per le foto spuntate (facoltativa)'));
+    var selNota = document.createElement('input');
+    selNota.type = 'text';
+    selNota.maxLength = 300;
+    selNota.placeholder = 'Se la scrivi, sostituisce la nota di ognuna';
+    etichettaSelNota.appendChild(selNota);
+    var rigaSelAzioni = el('div', 'riga-pulsanti');
+    var selApplica = el('button', null, 'Applica alle foto spuntate');
+    var selTogli = el('button', 'secondario', 'Togli le foto spuntate dall\'elenco');
+    selApplica.type = selTogli.type = 'button';
+    rigaSelAzioni.appendChild(selApplica);
+    rigaSelAzioni.appendChild(selTogli);
+    var esitoSel = el('p', 'stato-lettura');
+    esitoSel.setAttribute('aria-live', 'polite');
+    [titoloSel, rigaSelPulsanti, etichettaSelProblema, etichettaSelNota, rigaSelAzioni, esitoSel].forEach(function (n) { barraSel.appendChild(n); });
+    barraSel.hidden = true;
+
     var pannelloInvio = el('div', 'pannello-invio');
     var dove = el('div', 'dove');
     var titoloDove = el('p', 'campo-data');
@@ -230,7 +261,7 @@
     avanzamento.setAttribute('aria-live', 'polite');
     [etichettaTutte, dove, etichettaData, aiutoData, pulsanteInvia, avanzamento].forEach(function (n) { pannelloInvio.appendChild(n); });
 
-    [scelta, aiuto, stato, riepilogo, lista, pannelloInvio, dettagliIgnorati, svuota].forEach(function (n) { contenitore.appendChild(n); });
+    [scelta, aiuto, stato, riepilogo, barraSel, lista, pannelloInvio, dettagliIgnorati, svuota].forEach(function (n) { contenitore.appendChild(n); });
 
     function liberaAnteprima(voce) {
       if (voce.anteprima) URL.revokeObjectURL(voce.anteprima);
@@ -278,6 +309,89 @@
       }
       return c;
     }
+
+    function selezionabile(voce) {
+      return voce.stato !== 'inviata' && !voce.esito.errore;
+    }
+
+    function spuntate() {
+      return elenco.filter(function (v) { return v.selezionata && selezionabile(v); });
+    }
+
+    // Aggiorna la barra della selezione senza ridisegnare l'elenco (così non si perde ciò che si sta scrivendo).
+    function aggiornaBarraSelezione() {
+      var possibili = elenco.filter(selezionabile).length;
+      var n = spuntate().length;
+      barraSel.hidden = possibili < 2;
+      titoloSel.textContent = n === 0 ? 'Spunta le foto a cui dare lo stesso problema o la stessa nota.' : (n === 1 ? '1 foto spuntata.' : n + ' foto spuntate.');
+      var rifa = selProblema.options.length !== etichette.length + 2;
+      if (rifa) {
+        selProblema.textContent = '';
+        selProblema.appendChild(new Option('Non cambiare', ''));
+        selProblema.appendChild(new Option('Nessuno in particolare', '__nessuno'));
+        etichette.forEach(function (nome) { selProblema.appendChild(new Option(nome, nome)); });
+      }
+      etichettaSelProblema.hidden = etichette.length === 0;
+      var senzaDriveSpuntate = spuntate().filter(function (v) { return !v.idFileDrive && v.stato !== 'in_invio'; }).length;
+      selApplica.disabled = inviando || n === 0;
+      selTogli.disabled = inviando || senzaDriveSpuntate === 0;
+      selTutte.disabled = selNessuna.disabled = selProblema.disabled = selNota.disabled = inviando;
+    }
+
+    function impostaSelezione(valore) {
+      elenco.forEach(function (v) { if (selezionabile(v)) v.selezionata = valore; });
+      esitoSel.textContent = '';
+      ridisegna();
+    }
+
+    function applicaAllaSelezione() {
+      var scelte = spuntate();
+      if (!scelte.length || inviando) return;
+      var problema = selProblema.value;
+      var nota = selNota.value.replace(/[\u0000-\u001F\u007F]+/g, ' ').trim();
+      var nuovoProblema = function (v) { return problema === '' ? v.etichetta : (problema === '__nessuno' ? '' : problema); };
+      var senzaNota = scelte.filter(function (v) { return nomeAltro && nuovoProblema(v) === nomeAltro && !(nota || v.nota.trim()); });
+      if (problema === '' && !nota) {
+        esitoSel.className = 'stato-lettura avviso-testo';
+        esitoSel.textContent = 'Scegli un problema o scrivi una nota da applicare.';
+        return;
+      }
+      if (senzaNota.length) {
+        esitoSel.className = 'stato-lettura errore-testo';
+        esitoSel.textContent = 'Con «' + nomeAltro + '» serve una nota che spieghi il problema: scrivila qui sopra e applica di nuovo.';
+        return;
+      }
+      scelte.forEach(function (v) {
+        v.etichetta = nuovoProblema(v);
+        if (nota) v.nota = nota;
+        if (v.codiceErrore === 'nota_obbligatoria' || v.codiceErrore === 'etichetta_non_valida') { v.errore = null; v.codiceErrore = null; }
+      });
+      selProblema.value = '';
+      selNota.value = '';
+      esitoSel.className = 'stato-lettura stato-inviata';
+      esitoSel.textContent = '✅ Applicato a ' + scelte.length + (scelte.length === 1 ? ' foto.' : ' foto.');
+      ridisegna();
+    }
+
+    function togliSpuntate() {
+      if (inviando) return;
+      var daTogliere = spuntate().filter(function (v) { return !v.idFileDrive && v.stato !== 'in_invio'; });
+      if (!daTogliere.length) return;
+      daTogliere.forEach(function (v) {
+        var i = elenco.indexOf(v);
+        if (i !== -1) elenco.splice(i, 1);
+        delete chiavi[v.chiave];
+        liberaAnteprima(v);
+      });
+      esitoSel.className = 'stato-lettura';
+      esitoSel.textContent = daTogliere.length === 1 ? '1 foto tolta dall\'elenco.' : daTogliere.length + ' foto tolte dall\'elenco.';
+      ridisegna();
+    }
+
+    selTutte.addEventListener('click', function () { impostaSelezione(true); });
+    selNessuna.addEventListener('click', function () { impostaSelezione(false); });
+    selApplica.addEventListener('click', applicaAllaSelezione);
+    selTogli.addEventListener('click', togliSpuntate);
 
     function caricaEtichette() {
       if (etichetteCaricate || !window.CaiApi) return Promise.resolve();
@@ -392,6 +506,21 @@
           scheda.appendChild(el('div', 'anteprima senza-immagine', r.formato === 'heic' ? 'Anteprima non disponibile (HEIC)' : 'Anteprima non disponibile'));
         }
         var dati = el('div', 'dati-foto');
+        if (selezionabile(voce)) {
+          var casella = el('label', 'casella-foto');
+          var spunta = document.createElement('input');
+          spunta.type = 'checkbox';
+          spunta.checked = Boolean(voce.selezionata);
+          spunta.disabled = inviando;
+          spunta.addEventListener('change', function () {
+            voce.selezionata = spunta.checked;
+            esitoSel.textContent = '';
+            aggiornaBarraSelezione();
+          });
+          casella.appendChild(spunta);
+          casella.appendChild(el('span', null, 'Spunta questa foto'));
+          dati.appendChild(casella);
+        }
         dati.appendChild(el('strong', 'nome-foto', voce.nome));
         dati.appendChild(el('div', 'nota', formatoData(r.dataScatto) + ' · ' + formatoByte(voce.file.size)));
         if (r.errore) {
@@ -438,6 +567,7 @@
         lista.appendChild(scheda);
       });
 
+      aggiornaBarraSelezione();
       dettagliIgnorati.textContent = '';
       dettagliIgnorati.hidden = ignorati.length === 0;
       if (ignorati.length) {
