@@ -84,4 +84,4 @@ function testoSentiero(p) {
   return [p.ref, nome ? '– ' + nome : '', p.da && p.a ? `(${p.da} → ${p.a})` : ''].filter(Boolean).join(' ');
 }
 
-module.exports = { menuSentieri, nomeSettore, testoSentiero, tuttiIPercorsi, trovaPercorso };
+module.exports = { menuSentieri, nomeSettore, nomeSenzaNumero, testoSentiero, tuttiIPercorsi, trovaPercorso };

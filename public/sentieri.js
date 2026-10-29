@@ -69,6 +69,23 @@
     var messaggioSettori = el('p', 'stato-lettura');
     messaggioSettori.setAttribute('aria-live', 'polite');
     var listaSettori = el('div', 'lista-settori');
+    // ---- cerca un sentiero nei dati del CAI (per capire perché non compare ai volontari) ----
+    var titoloCerca = el('h3', null, 'Cerca un sentiero');
+    var notaCerca = el('p', 'nota', 'Scrivi il numero (per esempio 110) o parte del nome: la ricerca guarda in tutti i percorsi scaricati dal CAI, anche in quelli che i volontari non vedono, e dice perché un sentiero non compare nel menu.');
+    var rigaCerca = el('div', 'riga-cerca');
+    var campoCercaSent = document.createElement('input');
+    campoCercaSent.type = 'search';
+    campoCercaSent.autocomplete = 'off';
+    campoCercaSent.placeholder = 'Numero o nome del sentiero';
+    campoCercaSent.setAttribute('aria-label', 'Numero o nome del sentiero');
+    var pulsanteCerca = el('button', null, 'Cerca');
+    pulsanteCerca.type = 'button';
+    rigaCerca.appendChild(campoCercaSent);
+    rigaCerca.appendChild(pulsanteCerca);
+    var esitoCerca = el('p', 'stato-lettura');
+    esitoCerca.setAttribute('aria-live', 'polite');
+    var risultatiCerca = el('div', 'risultati-cerca');
+
     var titoloComuni = el('h3', null, 'Sentieri per comune');
     var notaComuni = el('p', 'nota', 'Scegli un comune per vedere i sentieri che lo attraversano, come indicato dal CAI. Un sentiero che passa per più comuni compare in ciascuno. Si vedono solo i settori attivi.');
     var messaggioComuni = el('p', 'stato-lettura');
@@ -87,6 +104,7 @@
     var menu = null;
     var comuneScelto = '';
     [titoloSync, rigaStato, avanzamento, errore, pulsanteAggiorna, notaSync, titoloSettori, notaSettori, messaggioSettori, listaSettori,
+      titoloCerca, notaCerca, rigaCerca, esitoCerca, risultatiCerca,
       titoloComuni, notaComuni, messaggioComuni, etichettaComune, etichettaCerca, elencoComune]
       .forEach(function (n) { contenitore.appendChild(n); });
 
@@ -147,6 +165,55 @@
       disegnaStato();
       if (stato && !stato.inCorso) { caricaSettori(); caricaComuni(); }
     }
+
+    // ---- cerca un sentiero ----
+    async function cercaSentiero() {
+      var q = campoCercaSent.value.trim();
+      risultatiCerca.textContent = '';
+      if (!q) { esitoCerca.className = 'stato-lettura avviso-testo'; esitoCerca.textContent = 'Scrivi un numero o un nome.'; return; }
+      esitoCerca.className = 'stato-lettura';
+      esitoCerca.textContent = 'Sto cercando…';
+      var r;
+      try {
+        r = await window.CaiApi.chiedi('/api/admin/sentieri-cerca?q=' + encodeURIComponent(q));
+      } catch (e) {
+        esitoCerca.className = 'stato-lettura errore-testo';
+        esitoCerca.textContent = MESSAGGI_API[e && e.message === 'sessione_scaduta' ? 'sessione_scaduta' : 'rete'];
+        return;
+      }
+      if (r.stato !== 200 || !r.corpo) {
+        esitoCerca.className = 'stato-lettura errore-testo';
+        esitoCerca.textContent = MESSAGGI_API.generico;
+        return;
+      }
+      var d = r.corpo;
+      var sinc = d.sincronizzazione;
+      esitoCerca.textContent = d.trovati.length === 0 ? '' : (d.trovati.length === 1 ? '1 sentiero trovato.' : d.trovati.length + ' sentieri trovati.');
+      d.trovati.forEach(function (t) {
+        var c = el('div', 'risultato-cerca ' + (t.visibile ? 'visibile' : 'nascosto'));
+        c.appendChild(el('strong', null, (t.visibile ? '✅ ' : '⚠️ ') + t.ref + (t.nome ? ' – ' + t.nome : '')));
+        if (t.da && t.a) c.appendChild(el('div', null, t.da + ' → ' + t.a));
+        c.appendChild(el('div', 'nota', 'Comuni: ' + (t.comuni.length ? t.comuni.join(', ') : '—') + ' · Stato di accatastamento (SDA): ' + (t.sda === null ? '—' : t.sda) + ' · Codice interno: ' + t.id));
+        c.appendChild(el('div', t.visibile ? 'nota' : 'avviso-testo', t.motivo));
+        if (t.settori.length) {
+          c.appendChild(el('div', 'nota', 'Settori: ' + t.settori.map(function (s) { return s.etichetta + (s.attivo ? ' (attivo)' : ' (spento)'); }).join(', ')));
+        }
+        risultatiCerca.appendChild(c);
+      });
+      if (d.trovati.length === 0) {
+        var c0 = el('div', 'risultato-cerca nascosto');
+        c0.appendChild(el('strong', null, '⚠️ «' + d.q + '» non c\'è nei dati scaricati dal CAI'));
+        c0.appendChild(el('p', null, 'Può succedere se il percorso non è validato (stato di accatastamento ' + (sinc.sda || '4') + ') nel CAI, se sta fuori dall\'area che si scarica' + (sinc.area ? ' (' + sinc.area.join(', ') + ' = ovest, sud, est, nord)' : '') + ', se è stato saltato durante lo scarico, oppure se l\'ultimo aggiornamento è precedente alla sua validazione.'));
+        c0.appendChild(el('div', 'nota', 'Ultimo aggiornamento riuscito: ' + (sinc.ultimaRiuscita ? dataOra(sinc.ultimaRiuscita) : 'mai') + ' · ' + sinc.percorsi + ' percorsi scaricati.'));
+        if (sinc.saltati.length) c0.appendChild(el('div', 'avviso-testo', 'Elementi saltati nell\'ultimo scarico: ' + sinc.saltati.join('; ') + '.'));
+        else c0.appendChild(el('div', 'nota', 'Nessun elemento saltato nell\'ultimo scarico.'));
+        c0.appendChild(el('div', 'nota', 'Dopo aver controllato, premi «Aggiorna ora» in alto: se il percorso è stato validato da poco, comparirà.'));
+        risultatiCerca.appendChild(c0);
+      }
+    }
+
+    pulsanteCerca.addEventListener('click', cercaSentiero);
+    campoCercaSent.addEventListener('keydown', function (e) { if (e.key === 'Enter') cercaSentiero(); });
 
     // ---- sentieri per comune ----
     function disegnaComuni() {
@@ -294,6 +361,9 @@
       stato = null;
       impostazioni = null;
       menu = null;
+      campoCercaSent.value = '';
+      risultatiCerca.textContent = '';
+      esitoCerca.textContent = '';
       comuneScelto = '';
       cercaComune.value = '';
       elencoComune.textContent = '';

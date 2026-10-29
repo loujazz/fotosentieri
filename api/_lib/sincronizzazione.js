@@ -235,7 +235,8 @@ async function fasePercorsi(ctx) {
       lavoro.percorsi[id] = { meta, c: linee };
     } catch (errore) {
       if (!(errore instanceof ErroApi) || !['osm2cai_non_trovato', 'osm2cai_risposta'].includes(errore.codice)) throw errore;
-      stato.saltati.push(`percorso ${id}`);
+      // Si annota anche il perché: un percorso saltato non compare mai ai volontari (si vede in «Sentieri» → «Cerca un sentiero»).
+      stato.saltati.push(`percorso ${id} (${errore.codice === 'osm2cai_non_trovato' ? 'il CAI non lo trova' : 'senza tracciato o dati incompleti'})`);
     }
     stato.coda.percorsi.shift();
     stato.avanzamento.fatti++;

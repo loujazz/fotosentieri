@@ -23,6 +23,7 @@ const percorsi = {
   'admin/elimina': require('./_gestori/admin/elimina'),
   'admin/categorie': require('./_gestori/admin/categorie'),
   'admin/settori': require('./_gestori/admin/settori'),
+  'admin/sentieri-cerca': require('./_gestori/admin/sentieri-cerca'),
   'admin/sync': require('./_gestori/admin/sync'),
   'sync/cron': require('./_gestori/sync/cron'),
 };
