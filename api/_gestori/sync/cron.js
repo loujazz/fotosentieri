@@ -4,9 +4,9 @@
 // CRON_SECRET esiste; su un altro hosting basta un'operazione pianificata (cron) che chiami questo indirizzo
 // con la stessa intestazione, per esempio:  curl -H "Authorization: Bearer $CRON_SECRET" https://sito/api/sync/cron
 const crypto = require('crypto');
-const { ErroApi, variabile } = require('../_lib/sheets');
-const { risposta } = require('../_lib/auth');
-const { passo } = require('../_lib/sincronizzazione');
+const { ErroApi, variabile } = require('../../_lib/sheets');
+const { risposta } = require('../../_lib/auth');
+const { passo } = require('../../_lib/sincronizzazione');
 
 function segretoValido(intestazione) {
   const atteso = Buffer.from(variabile('CRON_SECRET'));

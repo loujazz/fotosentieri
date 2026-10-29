@@ -6,9 +6,9 @@
 //        { azione: 'sposta', nome, direzione: 'su' | 'giu' }
 // Le categorie non si cancellano né si rinominano (le foto già inviate le conservano): si disattivano.
 // «Altro» è riservata: c'è sempre e non si può creare né modificare.
-const { RUOLI_ADMIN, protetto } = require('../_lib/auth');
-const { ErroApi, leggiScheda, aggiungiRighe, aggiornaCelle } = require('../_lib/sheets');
-const { ALTRO, MAX_NOME, tutteLeEtichette, normalizzaNome, stessoNome } = require('../_lib/etichette');
+const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
+const { ErroApi, leggiScheda, aggiungiRighe, aggiornaCelle } = require('../../_lib/sheets');
+const { ALTRO, MAX_NOME, tutteLeEtichette, normalizzaNome, stessoNome } = require('../../_lib/etichette');
 
 function richiestaNonValida(motivo) {
   return new ErroApi(400, 'richiesta_non_valida', motivo);

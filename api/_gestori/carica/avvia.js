@@ -3,9 +3,9 @@
 // Risposta: { sessioni: [{ idFoto, indirizzo }] }
 // Per ogni foto il server crea su Drive una sessione di caricamento nella cartella "Da approvare":
 // il browser invia poi il file originale direttamente a quell'indirizzo.
-const { protetto } = require('../_lib/auth');
-const { ErroApi } = require('../_lib/sheets');
-const drive = require('../_lib/drive');
+const { protetto } = require('../../_lib/auth');
+const { ErroApi } = require('../../_lib/sheets');
+const drive = require('../../_lib/drive');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_FOTO = 50;

@@ -1,8 +1,8 @@
 // GET /api/me           (con "Authorization: Bearer <ID token>") -> { email, nome, ruolo }
 // GET /api/me?config=1  (senza token)                          -> { clientId, dominio }
 // La seconda forma serve solo alla pagina di accesso per sapere come configurare Google Sign-In.
-const { RUOLI, protetto, risposta, dominioAmmesso } = require('./_lib/auth');
-const { variabile } = require('./_lib/sheets');
+const { RUOLI, protetto, risposta, dominioAmmesso } = require('../_lib/auth');
+const { variabile } = require('../_lib/sheets');
 
 const rispondiUtente = protetto(RUOLI, async (req, res, utente) => {
   res.status(200).json(utente);

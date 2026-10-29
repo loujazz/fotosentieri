@@ -1,9 +1,9 @@
 // GET /api/admin/anteprima?id=<idFoto>&misura=piccola|grande   (admin e super_admin)
 // Miniatura della foto, letta da Drive con l'account di servizio e restituita solo dopo il controllo
 // del ruolo. L'indirizzo del file su Drive si legge dal foglio, mai dalla richiesta.
-const { RUOLI_ADMIN, protetto } = require('../_lib/auth');
-const { ErroApi, leggiScheda } = require('../_lib/sheets');
-const drive = require('../_lib/drive');
+const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
+const { ErroApi, leggiScheda } = require('../../_lib/sheets');
+const drive = require('../../_lib/drive');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MISURE = { piccola: 400, grande: 1600 };

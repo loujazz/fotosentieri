@@ -3,11 +3,11 @@
 // Dopo il caricamento su Drive, il server controlla ogni file (cartella, proprietario, tipo), rilegge
 // posizione e data dal file stesso (non si fida del browser) e aggiunge le righe nelle schede
 // "invii" e "foto". Ripetibile senza duplicati. Risposta: { registrate: [idFoto], errori: [{ idFoto, errore }] }
-const { protetto } = require('../_lib/auth');
-const { ErroApi, variabile, leggiScheda, aggiungiRighe } = require('../_lib/sheets');
-const drive = require('../_lib/drive');
-const { ALTRO, etichetteAttive, stessoNome } = require('../_lib/etichette');
-const CaiExif = require('../../public/exif.js');
+const { protetto } = require('../../_lib/auth');
+const { ErroApi, variabile, leggiScheda, aggiungiRighe } = require('../../_lib/sheets');
+const drive = require('../../_lib/drive');
+const { ALTRO, etichetteAttive, stessoNome } = require('../../_lib/etichette');
+const CaiExif = require('../../../public/exif.js');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID_DRIVE = /^[A-Za-z0-9_-]{10,100}$/;

@@ -7,12 +7,12 @@ Servizio per i volontari della sentieristica del CAI Bologna «Mario Fantin»: c
 ## Struttura
 
 - `public/`: pagina web (HTML, CSS e JavaScript semplice, nessun bundler). `public/vendor/`: librerie copiate nel repository (fflate, Leaflet).
-- `api/`: funzioni Vercel.
-  - `api/me.js`: configurazione per la pagina di accesso e «chi sono». `api/sessione.js`: dopo l'accesso con Google rilascia (e rinnova) il biglietto di sessione del sito.
-  - `api/etichette.js`: tipi di problema attivi (scheda `etichette`) più «Altro» per il menu del volontario; `api/admin/categorie.js`: gestione delle categorie da parte degli admin.
-  - `api/carica/avvia.js` e `api/carica/conferma.js`: sessioni di caricamento su Drive e registrazione nel foglio (solo volontari).
-  - `api/admin/foto.js`, `anteprima.js`, `revisione.js`, `mappa.js`, `categorie.js`, `settori.js`, `sync.js`: elenco, miniature, revisione, punti della mappa, categorie, settori e sincronizzazione con OSM2CAI (solo admin e super_admin).
-  - `api/sync/cron.js`: un passo della sincronizzazione, chiamato ogni notte con `CRON_SECRET` (Vercel Cron, o un cron qualsiasi su un altro hosting).
+- `api/`: **una sola funzione Vercel**, `api/[...ruta].js`, che smista tutti gli indirizzi `/api/...` ai gestori in `api/_gestori/` (il piano Hobby ammette al massimo 12 funzioni e ogni file in `api/` ne conta una; le cartelle con il trattino basso non contano). **Per aggiungere un indirizzo nuovo:** crea il gestore in `api/_gestori/` e aggiungilo all'elenco in `api/[...ruta].js`. I nomi qui sotto sono quelli dei gestori.
+  - `me.js`: configurazione per la pagina di accesso e «chi sono». `sessione.js`: dopo l'accesso con Google rilascia (e rinnova) il biglietto di sessione del sito.
+  - `etichette.js`: tipi di problema attivi (scheda `etichette`) più «Altro» per il menu del volontario; `admin/categorie.js`: gestione delle categorie da parte degli admin.
+  - `carica/avvia.js` e `carica/conferma.js`: sessioni di caricamento su Drive e registrazione nel foglio (solo volontari).
+  - `admin/foto.js`, `anteprima.js`, `revisione.js`, `mappa.js`, `categorie.js`, `settori.js`, `sync.js`: elenco, miniature, revisione, punti della mappa, categorie, settori e sincronizzazione con OSM2CAI (solo admin e super_admin).
+  - `sync/cron.js`: un passo della sincronizzazione, chiamato ogni notte con `CRON_SECRET` (Vercel Cron, o un cron qualsiasi su un altro hosting).
 - `api/_lib/`: `auth.js` (verifica del biglietto o dell'ID token e del ruolo: **ogni funzione nuova va esportata con `protetto([...ruoli], gestore)`**, così il controllo dei permessi avviene sempre sul server), `sheets.js` (foglio Google), `drive.js` (Drive e file di dati), `sessione.js` (biglietto firmato), `etichette.js`, `osm2cai.js` (client dell'API del CAI), `geometria.js` (semplificazione dei tracciati, punti in un poligono), `sincronizzazione.js` (sincronizzazione a piccoli passi).
 - Pagine: `public/app.js` (accesso e viste), `public/exif.js` (lettura GPS, JPEG e HEIC), `public/carica.js` e `public/invio.js` (vista «Carica foto» e invio), `public/dashboard.js`, `public/mappa.js`, `public/categorie.js` e `public/sentieri.js` (vista admin).
 
