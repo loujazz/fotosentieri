@@ -7,6 +7,7 @@
   var rinnovo = null; // rinnovo in corso, condiviso tra chiamate contemporanee
   var configurazione = null;
   var pannello = null; // controllo della dashboard degli amministratori
+  var mappa = null; // controllo della mappa (amministratori)
   var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
 
   var $ = function (id) { return document.getElementById(id); };
@@ -116,6 +117,16 @@
   }
   window.CaiApi = { chiedi: chiediAlServer, blob: bloccoDalServer };
 
+  // Sezioni della vista admin: "foto" (dashboard) e "mappa". Ogni volta si ricarica l'elenco.
+  function mostraSezioneAdmin(nome) {
+    $('sezione-foto').hidden = nome !== 'foto';
+    $('sezione-mappa').hidden = nome !== 'mappa';
+    Array.prototype.forEach.call(document.querySelectorAll('#admin-navigazione button'), function (b) {
+      b.classList.toggle('attiva', b.getAttribute('data-sezione') === nome);
+    });
+    return nome === 'mappa' ? mappa.mostra() : pannello.ricarica();
+  }
+
   // Dopo l'accesso con Google: il server verifica l'ID token, controlla il foglio e rilascia
   // il biglietto di sessione con ruolo e nome.
   async function dopoAccesso(credenziale) {
@@ -138,8 +149,9 @@
       if (r.corpo.ruolo === 'admin' || r.corpo.ruolo === 'super_admin') {
         $('admin-ruolo').textContent = r.corpo.ruolo === 'super_admin' ? 'super amministratore' : 'amministratore';
         if (!pannello) pannello = window.Dashboard.avvia($('dashboard-contenuto'));
+        if (!mappa) mappa = window.Mappa.avvia($('mappa-contenuto'));
         mostra('admin');
-        return pannello.ricarica();
+        return mostraSezioneAdmin('foto');
       }
       return mostraErrore('Ruolo non riconosciuto. Avvisa un amministratore.');
     }
@@ -172,6 +184,7 @@
   function esci() {
     if (caricamento) caricamento.azzera();
     if (pannello) pannello.azzera();
+    if (mappa) mappa.azzera();
     if (window.google && window.google.accounts) window.google.accounts.id.disableAutoSelect();
     mostraAccesso();
   }
@@ -203,6 +216,9 @@
     window.google.accounts.id.prompt();
   }
 
+  Array.prototype.forEach.call(document.querySelectorAll('#admin-navigazione button'), function (b) {
+    b.addEventListener('click', function () { mostraSezioneAdmin(b.getAttribute('data-sezione')); });
+  });
   $('esci').addEventListener('click', esci);
   $('riprova').addEventListener('click', avvia);
   Array.prototype.forEach.call(document.querySelectorAll('.esci-vista'), function (b) {
