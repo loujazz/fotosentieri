@@ -9,6 +9,7 @@
   var pannello = null; // controllo della dashboard degli amministratori
   var mappa = null; // controllo della mappa (amministratori)
   var categorie = null; // controllo della pagina delle categorie (amministratori)
+  var invii = null; // elenco dei propri invii (volontari)
   var sentieri = null; // controllo della pagina dei sentieri e della sincronizzazione (amministratori)
   var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
 
@@ -134,6 +135,16 @@
     return pannello.ricarica();
   }
 
+  // Sezioni della vista volontario: «Carica foto» (resta com'è, con le foto già scelte) e «I miei invii» (si ricarica ogni volta).
+  function mostraSezioneVolontario(nome) {
+    $('sezione-carica').hidden = nome !== 'carica';
+    $('sezione-invii').hidden = nome !== 'invii';
+    Array.prototype.forEach.call(document.querySelectorAll('#volontario-navigazione button'), function (b) {
+      b.classList.toggle('attiva', b.getAttribute('data-sezione') === nome);
+    });
+    if (nome === 'invii') return invii.mostra();
+  }
+
   // Dopo l'accesso con Google: il server verifica l'ID token, controlla il foglio e rilascia
   // il biglietto di sessione con ruolo e nome.
   async function dopoAccesso(credenziale) {
@@ -151,7 +162,9 @@
       mostraUtente(r.corpo.nome);
       if (r.corpo.ruolo === 'volontario') {
         if (!caricamento) caricamento = window.Carica.avvia($('carica-contenuto'));
-        return mostra('volontario');
+        if (!invii) invii = window.MieiInvii.avvia($('invii-contenuto'));
+        mostra('volontario');
+        return mostraSezioneVolontario('carica');
       }
       if (r.corpo.ruolo === 'admin' || r.corpo.ruolo === 'super_admin') {
         $('admin-ruolo').textContent = r.corpo.ruolo === 'super_admin' ? 'super amministratore' : 'amministratore';
@@ -196,6 +209,7 @@
     if (mappa) mappa.azzera();
     if (categorie) categorie.azzera();
     if (sentieri) sentieri.azzera();
+    if (invii) invii.azzera();
     if (window.google && window.google.accounts) window.google.accounts.id.disableAutoSelect();
     mostraAccesso();
   }
@@ -229,6 +243,9 @@
 
   Array.prototype.forEach.call(document.querySelectorAll('#admin-navigazione button'), function (b) {
     b.addEventListener('click', function () { mostraSezioneAdmin(b.getAttribute('data-sezione')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#volontario-navigazione button'), function (b) {
+    b.addEventListener('click', function () { mostraSezioneVolontario(b.getAttribute('data-sezione')); });
   });
   $('esci').addEventListener('click', esci);
   $('riprova').addEventListener('click', avvia);
