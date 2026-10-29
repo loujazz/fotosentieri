@@ -228,7 +228,7 @@
     var pannelloInvio = el('div', 'pannello-invio');
     var dove = el('div', 'dove');
     var titoloDove = el('p', 'campo-data');
-    titoloDove.appendChild(el('span', null, 'Dove hai fatto il sopralluogo? (facoltativo)'));
+    titoloDove.appendChild(el('span', null, 'Dove hai fatto il sopralluogo?'));
     var campoSettore = document.createElement('select');
     var campoComune = document.createElement('select');
     var campoCerca = document.createElement('input');
