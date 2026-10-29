@@ -173,6 +173,30 @@ async function assicuraScheda(nomeScheda, intestazioni) {
   }
 }
 
+// Aggiunge in fondo alla riga delle intestazioni una colonna che manca (per esempio «ultimo_accesso» nella scheda
+// "utenti"), senza toccare le altre. Restituisce true se l'ha aggiunta, false se c'era già.
+async function assicuraColonna(nomeScheda, colonna) {
+  const idFoglio = encodeURIComponent(variabile('SHEET_ID'));
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${idFoglio}/values`;
+  try {
+    const client = await clientGoogle();
+    const testata = await client.request({ url: `${base}/${encodeURIComponent(`${nomeScheda}!1:1`)}` });
+    const intestazioni = ((testata.data && testata.data.values && testata.data.values[0]) || []).map((h) => String(h).trim().toLowerCase());
+    if (intestazioni.includes(colonna)) return false;
+    await client.request({
+      url: `${base}/${encodeURIComponent(`${nomeScheda}!${letteraColonna(intestazioni.length)}1`)}?valueInputOption=RAW`,
+      method: 'PUT',
+      data: { values: [[colonna]] },
+    });
+    return true;
+  } catch (errore) {
+    if (errore instanceof ErroApi) throw errore;
+    const stato = errore.response && errore.response.status;
+    console.error(`Aggiunta della colonna "${colonna}" alla scheda "${nomeScheda}" non riuscita (HTTP ${stato || '?'}):`, errore.message);
+    throw new ErroApi(500, 'errore_foglio', `Impossibile aggiungere la colonna "${colonna}"`);
+  }
+}
+
 function letteraColonna(indice) {
   let n = indice + 1;
   let lettera = '';
@@ -213,4 +237,4 @@ async function aggiornaCelle(nomeScheda, modifiche) {
   }
 }
 
-module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, aggiornaCelle, assicuraScheda, clientGoogle };
+module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, aggiornaCelle, assicuraScheda, assicuraColonna, clientGoogle };

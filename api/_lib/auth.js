@@ -7,6 +7,7 @@ const sessione = require('./sessione');
 
 const RUOLI = ['volontario', 'admin', 'super_admin'];
 const RUOLI_ADMIN = ['admin', 'super_admin'];
+const RUOLI_SUPER = ['super_admin']; // gestione di utenti e ruoli
 
 const clientOAuth = new OAuth2Client();
 
@@ -56,7 +57,7 @@ function siAttivo(valore) {
 // Cerca l'utente nella scheda "utenti". Fallisce se non c'è, non è attivo
 // o ha un ruolo non valido o non ammesso per la funzione richiesta.
 async function utenteDaIdentita(identita, ruoliAmmessi) {
-  const utenti = await leggiScheda('utenti');
+  const utenti = await leggiScheda('utenti', { conRiga: true });
   const riga = utenti.find((u) => (u.email || '').toLowerCase() === identita.email);
   const ruolo = riga ? (riga.ruolo || '').toLowerCase() : '';
   if (!riga || !siAttivo(riga.attivo) || !RUOLI.includes(ruolo)) {
@@ -65,7 +66,8 @@ async function utenteDaIdentita(identita, ruoliAmmessi) {
   if (!ruoliAmmessi.includes(ruolo)) {
     throw new ErroApi(403, 'ruolo_non_ammesso');
   }
-  return { email: identita.email, nome: riga.nome || identita.nomeGoogle, ruolo };
+  // _riga e ultimoAccesso servono solo al server (registrazione dell'ultimo accesso): non vanno mostrati al browser.
+  return { email: identita.email, nome: riga.nome || identita.nomeGoogle, ruolo, _riga: riga._riga, _ultimoAccesso: riga.ultimo_accesso || '' };
 }
 
 // Avvolge una funzione: controlla il ruolo e trasforma gli errori in risposte JSON.
@@ -92,4 +94,4 @@ function risposta(res, errore) {
   return res.status(500).json({ errore: 'errore_server' });
 }
 
-module.exports = { RUOLI, RUOLI_ADMIN, dominioAmmesso, protetto, risposta };
+module.exports = { RUOLI, RUOLI_ADMIN, RUOLI_SUPER, dominioAmmesso, protetto, risposta };
