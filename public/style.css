@@ -178,3 +178,14 @@ button.miniatura:hover { background: #dfe3da; }
 .barra-sentieri .campo-data { flex: 1 1 240px; margin-bottom: 0; }
 .barra-sentieri .campo-data select, .barra-sentieri .campo-data input { display: block; width: 100%; font: inherit; font-weight: 400; padding: 10px 12px; margin-top: 6px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; box-sizing: border-box; }
 .scheda-sentiero { min-width: 200px; }
+
+/* I miei invii (volontari) */
+.lista-invii { margin-top: 12px; }
+details.invio { background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+details.invio summary { cursor: pointer; }
+.foto-invio { border-top: 1px solid var(--bordo); padding: 8px 0; margin-top: 8px; }
+
+/* Posizione indicata da un amministratore */
+.area-posizione { height: 46vh; min-height: 300px; }
+.anteprima-posizione { max-width: 220px; margin: 8px 0; }
+.anteprima-posizione img { width: 100%; border-radius: 8px; display: block; }

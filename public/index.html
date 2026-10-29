@@ -44,8 +44,18 @@
     </section>
 
     <section id="vista-volontario" class="vista" hidden>
-      <h2>Carica foto</h2>
-      <div id="carica-contenuto"></div>
+      <div class="schede-stato" id="volontario-navigazione">
+        <button type="button" class="scheda-stato attiva" data-sezione="carica">Carica foto</button>
+        <button type="button" class="scheda-stato" data-sezione="invii">I miei invii</button>
+      </div>
+      <div id="sezione-carica">
+        <h2>Carica foto</h2>
+        <div id="carica-contenuto"></div>
+      </div>
+      <div id="sezione-invii" hidden>
+        <h2>I miei invii</h2>
+        <div id="invii-contenuto"></div>
+      </div>
     </section>
 
     <section id="vista-admin" class="vista" hidden>
@@ -70,6 +80,7 @@
   <script src="invio.js"></script>
   <script src="menu.js"></script>
   <script src="carica.js"></script>
+  <script src="miei-invii.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/leaflet/leaflet.markercluster.js"></script>
   <script src="dashboard.js"></script>

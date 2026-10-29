@@ -85,11 +85,13 @@
     // ---- finestre di dialogo ----
     function chiudiModale() {
       if (!modaleAperta) return;
+      if (modaleAperta.pulisci) modaleAperta.pulisci();
       document.removeEventListener('keydown', modaleAperta.tasti);
       modaleAperta.sfondo.remove();
       modaleAperta = null;
     }
 
+    // Salvare la posizione cambia i dati della foto: "pulisci" serve a chiudere la mappa della finestra.
     function apriModale(contenuto, opzioni) {
       chiudiModale();
       var sfondo = el('div', 'modale-sfondo');
@@ -102,7 +104,7 @@
       var tasti = function (e) { if (e.key === 'Escape') chiudiModale(); };
       document.addEventListener('keydown', tasti);
       document.body.appendChild(sfondo);
-      modaleAperta = { sfondo: sfondo, tasti: tasti };
+      modaleAperta = { sfondo: sfondo, tasti: tasti, pulisci: opzioni && opzioni.pulisci };
     }
 
     // Domanda di conferma. Con "chiediMotivo" il motivo è obbligatorio. Risolve con { motivo } oppure null.
@@ -191,6 +193,103 @@
       }
       elemento.setAttribute('data-id', idFoto);
       osservatore.observe(elemento);
+    }
+
+    // ---- posizione indicata da un amministratore (foto senza GPS) ----
+    var MSG_POSIZIONE = {
+      posizione_gia_presente: 'Questa foto ha già la posizione letta dal file: non si può cambiare.',
+      posizione_fuori_zona: 'Il punto scelto non è in Italia. Controlla la mappa e riprova.',
+      foto_non_trovata: 'Foto non trovata. Ricarica la pagina.',
+      sessione_scaduta: 'La sessione è scaduta: accedi di nuovo.',
+      rete: 'Connessione interrotta. Controlla internet e riprova.',
+      generico: 'Il servizio ha avuto un problema. Riprova tra poco.',
+    };
+
+    function apriPosizione(f) {
+      var c = el('div');
+      c.appendChild(el('h3', 'nome-foto', 'Dove è stata scattata?'));
+      c.appendChild(el('p', 'nota', f.nomeFile));
+      var anteprima = el('div', 'anteprima-posizione');
+      c.appendChild(anteprima);
+      aggiungiDescrizione(c, f);
+      c.appendChild(el('p', 'messaggio', 'Clicca sulla mappa nel punto giusto. Puoi trascinare il segnaposto per spostarlo e ingrandire la mappa per essere più precisi.'));
+      var area = el('div', 'area-mappa area-posizione');
+      c.appendChild(area);
+      var coordinate = el('p', 'nota', 'Nessun punto scelto.');
+      var esito = el('p', 'stato-lettura');
+      esito.setAttribute('aria-live', 'polite');
+      c.appendChild(coordinate);
+      c.appendChild(esito);
+      var punto = senzaPosizione(f) ? null : { lat: f.lat, lon: f.lon };
+      var mappa = null;
+      var marcatore = null;
+      var salva = pulsante('Salva la posizione', '', function () { salvaPosizione(); });
+      salva.disabled = !punto;
+      var azioni = el('div', 'azioni-modale');
+      azioni.appendChild(pulsante('Annulla', 'secondario', chiudiModale));
+      azioni.appendChild(salva);
+      c.appendChild(azioni);
+      apriModale(c, { larga: true, pulisci: function () { if (mappa) { mappa.remove(); mappa = null; } } });
+
+      function indica(lat, lon) {
+        punto = { lat: lat, lon: lon };
+        if (!marcatore) {
+          marcatore = L.marker([lat, lon], { draggable: true }).addTo(mappa);
+          marcatore.on('dragend', function () { var p = marcatore.getLatLng(); indica(p.lat, p.lng); });
+        } else {
+          marcatore.setLatLng([lat, lon]);
+        }
+        coordinate.textContent = '📍 ' + lat.toFixed(5) + ', ' + lon.toFixed(5);
+        salva.disabled = false;
+        esito.textContent = '';
+      }
+
+      mappa = L.map(area).setView(punto ? [punto.lat, punto.lon] : [44.4949, 11.3426], punto ? 15 : 10);
+      var stradale = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' });
+      var topografica = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', attribution: '© OpenStreetMap, SRTM · stile © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA)' });
+      stradale.addTo(mappa);
+      L.control.layers({ 'Mappa stradale': stradale, 'Mappa topografica': topografica }, null, { collapsed: true }).addTo(mappa);
+      mappa.on('click', function (e) { indica(e.latlng.lat, e.latlng.lng); });
+      if (punto) indica(punto.lat, punto.lon);
+      setTimeout(function () { if (mappa) mappa.invalidateSize(); }, 50);
+
+      window.CaiApi.blob('/api/admin/anteprima?id=' + encodeURIComponent(f.idFoto) + '&misura=piccola').then(function (blob) {
+        var indirizzo = URL.createObjectURL(blob);
+        var img = el('img', 'miniatura-img');
+        img.alt = '';
+        img.onload = function () { URL.revokeObjectURL(indirizzo); };
+        img.src = indirizzo;
+        anteprima.appendChild(img);
+      }).catch(function () { /* senza miniatura si può comunque indicare il punto */ });
+
+      async function salvaPosizione() {
+        if (!punto) return;
+        salva.disabled = true;
+        esito.className = 'stato-lettura';
+        esito.textContent = 'Sto salvando…';
+        var r;
+        try {
+          r = await window.CaiApi.chiedi('/api/admin/posizione', { method: 'POST', body: { idFoto: f.idFoto, lat: punto.lat, lon: punto.lon } });
+        } catch (errore) {
+          esito.className = 'stato-lettura errore-testo';
+          esito.textContent = MSG_POSIZIONE[errore && errore.message === 'sessione_scaduta' ? 'sessione_scaduta' : 'rete'];
+          salva.disabled = false;
+          return;
+        }
+        if (r.stato !== 200 || !r.corpo) {
+          esito.className = 'stato-lettura errore-testo';
+          esito.textContent = MSG_POSIZIONE[r.corpo && r.corpo.errore] || MSG_POSIZIONE.generico;
+          salva.disabled = false;
+          return;
+        }
+        f.lat = r.corpo.lat;
+        f.lon = r.corpo.lon;
+        f.fontePosizione = r.corpo.fontePosizione;
+        chiudiModale();
+        disegna();
+        avviso.className = 'stato-lettura';
+        avviso.textContent = '✅ Posizione salvata per ' + f.nomeFile + '.';
+      }
     }
 
     // ---- foto intera ----
@@ -338,6 +437,7 @@
       if (f.dataScatto) d.appendChild(el('div', 'nota', 'Scattata il ' + dataOra(f.dataScatto)));
       if (senzaPosizione(f)) {
         d.appendChild(el('div', 'esito-foto avviso-testo', '⚠️ Senza posizione'));
+        d.appendChild(pulsante('Indica la posizione', 'piccolo secondario', function () { apriPosizione(f); }));
       } else {
         var p = el('div', 'esito-foto');
         p.appendChild(document.createTextNode('📍 ' + f.lat.toFixed(5) + ', ' + f.lon.toFixed(5) + ' '));
@@ -347,6 +447,10 @@
         a.rel = 'noopener';
         p.appendChild(a);
         d.appendChild(p);
+        if (f.fontePosizione === 'correzione_admin') {
+          d.appendChild(el('div', 'nota', 'Posizione indicata da un amministratore.'));
+          d.appendChild(pulsante('Cambia la posizione', 'piccolo secondario', function () { apriPosizione(f); }));
+        }
       }
       if (stato !== 'in_attesa') {
         d.appendChild(el('div', 'nota', (stato === 'approvata' ? 'Approvata' : 'Rifiutata') + ' da ' + (f.rivistaDa || '?') + (f.rivistaIl ? ' il ' + dataOra(f.rivistaIl) : '')));
