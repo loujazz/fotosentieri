@@ -1,7 +1,9 @@
 // POST /api/admin/revisione   (admin e super_admin)
-// Corpo: { azione: 'approva' | 'rifiuta', motivo?, foto: [idFoto] }   (da 1 a 100 foto)
+// Corpo: { azione: 'approva' | 'rifiuta' | 'annulla', motivo?, foto: [idFoto] }   (da 1 a 100 foto)
 // Approva: il file passa in "Approvate"; rifiuta (motivo obbligatorio): passa in "Scartate".
-// Poi il foglio riceve stato, chi ha rivisto, quando e il motivo. Solo le foto "in_attesa" si possono rivedere.
+// Poi il foglio riceve stato, chi ha rivisto, quando e il motivo. Approva e rifiuta valgono per le foto "in_attesa".
+// Annulla: una foto approvata o rifiutata torna "in_attesa" (il file torna in "Da approvare", chi ha rivisto, quando e il
+// motivo si svuotano) e si può rivedere di nuovo.
 // Risposta: { risultati: [{ idFoto, ok: true } | { idFoto, errore }] }
 // Ripetibile: se il file è già stato spostato ma il foglio non si è aggiornato, un secondo tentativo completa il lavoro.
 const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
@@ -43,7 +45,7 @@ module.exports = async (req, res) => {
   }
   return protetto(RUOLI_ADMIN, async (richiesta, risposta, utente) => {
     const corpo = leggiCorpo(richiesta);
-    if (corpo.azione !== 'approva' && corpo.azione !== 'rifiuta') throw richiestaNonValida('azione non valida');
+    if (!['approva', 'rifiuta', 'annulla'].includes(corpo.azione)) throw richiestaNonValida('azione non valida');
     if (!Array.isArray(corpo.foto) || corpo.foto.length < 1 || corpo.foto.length > MAX_FOTO) throw new ErroApi(400, 'troppe_foto');
     if (!corpo.foto.every((id) => typeof id === 'string' && UUID.test(id))) throw richiestaNonValida('idFoto non valido');
     if (new Set(corpo.foto).size !== corpo.foto.length) throw richiestaNonValida('idFoto ripetuti');
@@ -55,7 +57,8 @@ module.exports = async (req, res) => {
     }
 
     const approva = corpo.azione === 'approva';
-    const cartellaArrivo = variabile(approva ? 'FOLDER_APPROVATE_ID' : 'FOLDER_SCARTATE_ID');
+    const annulla = corpo.azione === 'annulla';
+    const cartellaArrivo = variabile(annulla ? 'FOLDER_DA_APPROVARE_ID' : (approva ? 'FOLDER_APPROVATE_ID' : 'FOLDER_SCARTATE_ID'));
     const righe = new Map((await leggiScheda('foto', { conRiga: true })).map((r) => [r.id_foto, r]));
 
     const risultati = new Map();
@@ -63,7 +66,11 @@ module.exports = async (req, res) => {
     await conLimite(corpo.foto, 3, async (idFoto) => {
       const riga = righe.get(idFoto);
       if (!riga) return risultati.set(idFoto, { idFoto, errore: 'foto_non_trovata' });
-      if (riga.stato !== 'in_attesa') return risultati.set(idFoto, { idFoto, errore: 'gia_rivista' });
+      if (annulla) {
+        if (riga.stato !== 'approvata' && riga.stato !== 'rifiutata') return risultati.set(idFoto, { idFoto, errore: 'non_rivista' });
+      } else if (riga.stato !== 'in_attesa') {
+        return risultati.set(idFoto, { idFoto, errore: 'gia_rivista' });
+      }
       try {
         await drive.sposta(riga.id_file_drive, cartellaArrivo);
       } catch (errore) {
@@ -77,7 +84,9 @@ module.exports = async (req, res) => {
       const quando = new Date().toISOString();
       await aggiornaCelle('foto', daAggiornare.map((d) => ({
         riga: d.riga,
-        valori: { stato: approva ? 'approvata' : 'rifiutata', rivista_da: utente.email, rivista_il: quando, motivo_rifiuto: motivo },
+        valori: annulla
+          ? { stato: 'in_attesa', rivista_da: '', rivista_il: '', motivo_rifiuto: '' }
+          : { stato: approva ? 'approvata' : 'rifiutata', rivista_da: utente.email, rivista_il: quando, motivo_rifiuto: motivo },
       })));
       daAggiornare.forEach((d) => risultati.set(d.idFoto, { idFoto: d.idFoto, ok: true }));
     }
