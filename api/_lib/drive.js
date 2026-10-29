@@ -155,4 +155,59 @@ async function sposta(idFile, cartellaArrivo) {
   return true;
 }
 
-module.exports = { impronta, creaSessioneCaricamento, metadati, fileDrive, miniatura, sposta, traduciErrore };
+// ---- File di dati dell'applicazione (JSON) nel Drive condiviso ----
+// Servono ai dati sincronizzati (settori e percorsi del CAI). Sono file creati dall'account di servizio
+// (visibili con lo scope drive.file), nella radice del Drive condiviso, riconosciuti dalla proprietà "dati".
+
+async function trovaFileDati(nome) {
+  const q = `appProperties has { key='dati' and value='${nome.replace(/[^A-Za-z0-9_-]/g, '')}' } and trashed=false`;
+  const risposta = await chiedi({
+    url: `${API.replace(/\/$/, '')}?corpora=drive&driveId=${encodeURIComponent(variabile('DRIVE_ID'))}&includeItemsFromAllDrives=true&supportsAllDrives=true` +
+      `&q=${encodeURIComponent(q)}&fields=files(id)`,
+  }, 'ricerca di un file di dati');
+  const trovati = (risposta.data && risposta.data.files) || [];
+  return trovati.length ? trovati[0].id : null;
+}
+
+// Contenuto del file di dati, oppure null se non esiste ancora.
+async function leggiDato(nome) {
+  const id = await trovaFileDati(nome);
+  if (!id) return null;
+  const risposta = await chiedi({
+    url: `${API}${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`,
+    responseType: 'text',
+  }, 'lettura di un file di dati');
+  try {
+    return JSON.parse(risposta.data);
+  } catch (errore) {
+    console.error(`Drive: il file di dati "${nome}" non è un JSON valido`);
+    throw new ErroApi(500, 'dati_non_validi', `Il file di dati "${nome}" non è leggibile`);
+  }
+}
+
+// Scrive (crea o sostituisce) il file di dati. Un file solo per nome: se esiste, si aggiorna il contenuto.
+async function scriviDato(nome, oggetto) {
+  const contenuto = JSON.stringify(oggetto);
+  const id = await trovaFileDati(nome);
+  if (id) {
+    await chiedi({
+      url: `${API_CARICAMENTO}/${encodeURIComponent(id)}?uploadType=media&supportsAllDrives=true&fields=id`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+      data: contenuto,
+    }, 'aggiornamento di un file di dati');
+    return;
+  }
+  const confine = 'fotosentieri' + crypto.randomBytes(8).toString('hex');
+  const metadati = { name: `dati-${nome}.json`, parents: [variabile('DRIVE_ID')], mimeType: 'application/json', appProperties: { dati: nome } };
+  const corpo = `--${confine}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadati)}\r\n` +
+    `--${confine}\r\nContent-Type: application/json\r\n\r\n${contenuto}\r\n--${confine}--`;
+  await chiedi({
+    url: `${API_CARICAMENTO}?uploadType=multipart&supportsAllDrives=true&fields=id`,
+    method: 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${confine}` },
+    data: corpo,
+  }, 'creazione di un file di dati');
+}
+
+module.exports = { impronta, creaSessioneCaricamento, metadati, fileDrive, miniatura, sposta, leggiDato, scriviDato, traduciErrore };

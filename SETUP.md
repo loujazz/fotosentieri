@@ -129,6 +129,10 @@ Righe iniziali suggerite (dalla riga 2): `albero caduto`, `frana`, `segnavia rov
 
 Righe iniziali suggerite: `email_avvisi_admin` con gli indirizzi degli admin separati da virgola (uso futuro).
 
+Righe facoltative per la sincronizzazione con il CAI (se mancano si usano i valori scritti qui): `area_bbox` = `10.9,44.0,11.8,44.7` (l'area da cui prendere settori e percorsi: ovest, sud, est, nord, in gradi), `sda` = `4` (solo i percorsi validati), `prefisso_settori` = `HBO` (i settori nuovi il cui codice comincia così partono attivi).
+
+La scheda **`settori`** non va creata a mano: la crea la prima sincronizzazione (pagina «Sentieri» → «Aggiorna ora»).
+
 - [ ] Ricava l'ID del foglio: nell'indirizzo del foglio è la parte tra `/d/` e `/edit`: `https://docs.google.com/spreadsheets/d/`**`1AbC…`**`/edit`. Deve avere circa 44 caratteri e non contenere `/`, `?`, `#` né `gid=`: se copi anche la coda dell'indirizzo, il sito non trova il foglio (errore 404). Il foglio deve essere un vero Foglio Google: se parti da un file `.xlsx`, usa **File → Salva come Fogli Google**.
 - **Copia → `SHEET_ID`**: l'ID del foglio.
 
@@ -154,8 +158,9 @@ Righe iniziali suggerite: `email_avvisi_admin` con gli indirizzi degli admin sep
 | `FOLDER_APPROVATE_ID` | ID della cartella `Approvate` | passo 6 |
 | `FOLDER_SCARTATE_ID` | ID della cartella `Scartate` | passo 6 |
 | `SESSION_SECRET` | una frase casuale lunga (almeno 32 caratteri) per firmare la sessione del sito | la crei tu: vedi sotto |
+| `CRON_SECRET` | un'altra frase casuale lunga (almeno 32 caratteri) per la sincronizzazione notturna con il CAI | la crei tu, come `SESSION_SECRET` |
 
-**Come creare `SESSION_SECRET`:** serve una stringa casuale che non conosce nessun altro. Su Mac apri l'app **Terminale**, scrivi `openssl rand -base64 48` e premi Invio: copia la riga che compare (circa 64 caratteri). Incollala come valore su Vercel e non scriverla da nessun'altra parte. Se un giorno la cambi, tutti dovranno rifare l'accesso.
+**Come creare `SESSION_SECRET` e `CRON_SECRET`** (due valori diversi, creati con lo stesso metodo): serve una stringa casuale che non conosce nessun altro. Su Mac apri l'app **Terminale**, scrivi `openssl rand -base64 48` e premi Invio: copia la riga che compare (circa 64 caratteri). Incollala come valore su Vercel e non scriverla da nessun'altra parte. Se un giorno la cambi, tutti dovranno rifare l'accesso.
 
 (Per l'accesso bastano `GOOGLE_CLIENT_ID`, `ALLOWED_DOMAIN`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `SHEET_ID` e `SESSION_SECRET`. Per il caricamento delle foto servono anche `DRIVE_ID` e `FOLDER_DA_APPROVARE_ID`; le altre due cartelle servono dalla dashboard in poi.)
 
