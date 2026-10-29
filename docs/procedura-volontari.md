@@ -1,5 +1,7 @@
 # Foto segnalazioni sentieri: procedura corretta (per ora)
 
+> **Nota (29/10/2026):** la guida vera per i volontari, con schermate, è la pagina del sito `public/guida.html` (si apre senza accedere). Questo documento resta come nota di progetto: non va consegnato ai volontari né stampato.
+
 *Schema aggiornato al 28/10/2026. Da rivedere dopo i test indicati in fondo.*
 
 ## Principio
