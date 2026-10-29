@@ -158,3 +158,10 @@ button.miniatura:hover { background: #dfe3da; }
 .codice-settore { min-width: 120px; }
 .nome-settore { flex: 1 1 260px; }
 .esito-salvataggio { min-height: 1.2em; }
+
+/* Menu settore -> sentiero e sentieri per comune */
+.dove { border: 2px solid var(--bordo); border-radius: 12px; padding: 12px 14px; margin: 12px 0; }
+.dove .campo-data select, .dove .campo-data input { max-width: 100%; }
+.dove .campo-data select, .dove .campo-data input { display: block; width: 100%; font: inherit; font-weight: 400; padding: 10px 12px; margin-top: 6px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; box-sizing: border-box; }
+#sezione-sentieri .campo-data select, #sezione-sentieri .campo-data input { display: block; width: 100%; max-width: 520px; font: inherit; font-weight: 400; padding: 10px 12px; margin-top: 6px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; box-sizing: border-box; }
+.sentiero { border-bottom: 1px solid var(--bordo); padding: 8px 0; }

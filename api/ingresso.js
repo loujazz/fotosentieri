@@ -8,6 +8,7 @@ const percorsi = {
   'me': require('./_gestori/me'),
   'sessione': require('./_gestori/sessione'),
   'etichette': require('./_gestori/etichette'),
+  'sentieri': require('./_gestori/sentieri'),
   'carica/avvia': require('./_gestori/carica/avvia'),
   'carica/conferma': require('./_gestori/carica/conferma'),
   'admin/foto': require('./_gestori/admin/foto'),

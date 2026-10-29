@@ -26,6 +26,7 @@
     ruolo_non_ammesso: 'Il tuo account non può inviare foto.',
     non_abilitato: 'Il tuo account non è abilitato.',
     etichetta_non_valida: 'Il tipo di problema scelto non è più disponibile. Sceglilo di nuovo e riprova.',
+    sentiero_non_valido: 'Il settore o il sentiero scelto non è più nel menu. Scegli di nuovo e riprova.',
     nota_obbligatoria: 'Con «Altro» scrivi nella nota di che problema si tratta.',
     caricata_non_registrata: 'La foto è su Drive ma non è ancora registrata. Premi «Invia» per riprovare.',
     generico: 'Il servizio ha avuto un problema. Riprova tra poco; se continua, avvisa un amministratore.',
@@ -164,12 +165,15 @@
       corpo = await chiamaServer(api, '/api/carica/conferma', {
         idInvio: o.idInvio,
         dataSopralluogo: o.dataSopralluogo || '',
+        settore: o.settore || null,
+        sentiero: o.sentiero || null,
         totaleFoto: o.totaleFoto,
         foto: blocco.map(function (v) { return { idFoto: v.idFoto, idFileDrive: v.idFileDrive, etichetta: v.etichetta || '', nota: v.nota || '' }; }),
       });
     } catch (errore) {
       // La foto è già su Drive: si riprova solo la registrazione, senza ricaricarla.
-      blocco.forEach(function (v) { segnaErrore(v, errore.codice === 'sessione_scaduta' ? 'sessione_scaduta' : 'caricata_non_registrata', true); });
+      var codice = errore.codice === 'sessione_scaduta' || errore.codice === 'sentiero_non_valido' ? errore.codice : 'caricata_non_registrata';
+      blocco.forEach(function (v) { segnaErrore(v, codice, true); });
       return;
     }
     var registrate = {};
@@ -190,7 +194,7 @@
     });
   }
 
-  // opzioni: { voci, idInvio, dataSopralluogo, totaleFoto, api, aggiorna }
+  // opzioni: { voci, idInvio, dataSopralluogo, settore, sentiero, totaleFoto, api, aggiorna }
   async function invia(o) {
     var api = o.api;
     var aggiorna = o.aggiorna;

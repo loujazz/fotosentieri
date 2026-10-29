@@ -158,6 +158,10 @@
     var nomeAltro = ''; // la voce «Altro»: richiede una nota che spieghi il problema
     var etichetteCaricate = false;
     var etichetteNonDisponibili = false;
+    var menu = { settori: [], percorsi: [], comuni: [] }; // settore -> sentiero (dati già sincronizzati con il CAI)
+    var menuCaricato = false;
+    var menuNonDisponibile = false;
+    var scelto = { settore: null, comune: '', testo: '', sentiero: null };
 
     contenitore.textContent = '';
     var scelta = el('label', 'scelta-file');
@@ -179,6 +183,30 @@
     svuota.hidden = true;
 
     var pannelloInvio = el('div', 'pannello-invio');
+    var dove = el('div', 'dove');
+    var titoloDove = el('p', 'campo-data');
+    titoloDove.appendChild(el('span', null, 'Dove hai fatto il sopralluogo? (facoltativo)'));
+    var campoSettore = document.createElement('select');
+    var campoComune = document.createElement('select');
+    var campoCerca = document.createElement('input');
+    campoCerca.type = 'search';
+    campoCerca.placeholder = 'Numero o nome, ad esempio 532';
+    campoCerca.autocomplete = 'off';
+    var campoSentiero = document.createElement('select');
+    var conteggioSentieri = el('p', 'nota');
+    var avvisoMenu = el('p', 'nota');
+    [['Settore', campoSettore], ['Comune (per restringere l\'elenco)', campoComune], ['Cerca il sentiero per numero o nome', campoCerca], ['Sentiero', campoSentiero]].forEach(function (c) {
+      var e = el('label', 'campo-data');
+      e.appendChild(el('span', null, c[0]));
+      e.appendChild(c[1]);
+      dove.appendChild(e);
+    });
+    dove.insertBefore(titoloDove, dove.firstChild);
+    dove.appendChild(conteggioSentieri);
+    dove.appendChild(avvisoMenu);
+    dove.hidden = true;
+    var aiutoDove = el('p', 'nota', 'Se non lo sai o il sentiero non è nell\'elenco, lascia «Non lo so»: puoi inviare lo stesso.');
+    dove.appendChild(aiutoDove);
     var etichettaData = el('label', 'campo-data');
     etichettaData.appendChild(el('span', null, 'Data del sopralluogo'));
     var campoData = document.createElement('input');
@@ -200,7 +228,7 @@
     pulsanteInvia.type = 'button';
     var avanzamento = el('p', 'stato-lettura');
     avanzamento.setAttribute('aria-live', 'polite');
-    [etichettaTutte, etichettaData, aiutoData, pulsanteInvia, avanzamento].forEach(function (n) { pannelloInvio.appendChild(n); });
+    [etichettaTutte, dove, etichettaData, aiutoData, pulsanteInvia, avanzamento].forEach(function (n) { pannelloInvio.appendChild(n); });
 
     [scelta, aiuto, stato, riepilogo, lista, pannelloInvio, dettagliIgnorati, svuota].forEach(function (n) { contenitore.appendChild(n); });
 
@@ -266,6 +294,64 @@
         etichetteNonDisponibili = true;
       });
     }
+
+    function caricaMenu() {
+      if (menuCaricato || !window.CaiApi) return Promise.resolve();
+      return window.CaiApi.chiedi('/api/sentieri').then(function (r) {
+        if (r.stato === 200 && r.corpo && Array.isArray(r.corpo.percorsi) && Array.isArray(r.corpo.settori)) {
+          menu = { settori: r.corpo.settori, percorsi: r.corpo.percorsi, comuni: r.corpo.comuni || [] };
+          menuCaricato = true;
+          menuNonDisponibile = false;
+        } else {
+          menuNonDisponibile = true;
+        }
+      }).catch(function () {
+        menuNonDisponibile = true;
+      });
+    }
+
+    function riempi(sel, voci, primo, valore) {
+      sel.textContent = '';
+      sel.appendChild(new Option(primo, ''));
+      voci.forEach(function (v) { sel.appendChild(new Option(v[1], String(v[0]))); });
+      sel.value = valore === null || valore === '' || valore === undefined ? '' : String(valore);
+    }
+
+    // Ridisegna i menu «Dove»: il sentiero si restringe per settore, comune e testo cercato.
+    function aggiornaDove() {
+      var vuoto = menu.percorsi.length === 0;
+      dove.hidden = leggibili().length === 0 || (vuoto && !menuNonDisponibile);
+      campoSettore.parentNode.hidden = campoComune.parentNode.hidden = campoCerca.parentNode.hidden = campoSentiero.parentNode.hidden = aiutoDove.hidden = vuoto;
+      conteggioSentieri.hidden = vuoto;
+      avvisoMenu.textContent = menuNonDisponibile ? 'Il menu dei sentieri non si è caricato: puoi inviare le foto lo stesso e scrivere il sentiero nella nota.' : '';
+      avvisoMenu.hidden = !menuNonDisponibile;
+      if (vuoto) return;
+      var trovati = window.CaiMenu.filtra(menu, scelto);
+      var corrente = scelto.sentiero ? menu.percorsi.filter(function (p) { return p.id === scelto.sentiero; })[0] : null;
+      if (corrente && trovati.indexOf(corrente) === -1) trovati = [corrente].concat(trovati); // il sentiero scelto resta nell'elenco
+      riempi(campoSettore, menu.settori.map(function (s) { return [s.id, window.CaiMenu.nomeSettore(s)]; }), 'Non lo so', scelto.settore);
+      riempi(campoComune, menu.comuni.map(function (c) { return [c, c]; }), 'Tutti i comuni', scelto.comune);
+      campoComune.value = scelto.comune;
+      riempi(campoSentiero, trovati.map(function (p) { return [p.id, window.CaiMenu.testoSentiero(p)]; }), 'Non lo so / non è nell\'elenco', scelto.sentiero);
+      conteggioSentieri.textContent = trovati.length === 1 ? '1 sentiero nell\'elenco.' : trovati.length + ' sentieri nell\'elenco.';
+      campoSettore.disabled = campoComune.disabled = campoCerca.disabled = campoSentiero.disabled = inviando;
+    }
+
+    campoSettore.addEventListener('change', function () {
+      scelto.settore = campoSettore.value ? Number(campoSettore.value) : null;
+      var p = scelto.sentiero ? menu.percorsi.filter(function (x) { return x.id === scelto.sentiero; })[0] : null;
+      if (p && scelto.settore && p.settori.indexOf(scelto.settore) === -1) scelto.sentiero = null;
+      aggiornaDove();
+    });
+    campoComune.addEventListener('change', function () { scelto.comune = campoComune.value; aggiornaDove(); });
+    campoCerca.addEventListener('input', function () { scelto.testo = campoCerca.value; aggiornaDove(); });
+    campoSentiero.addEventListener('change', function () {
+      scelto.sentiero = campoSentiero.value ? Number(campoSentiero.value) : null;
+      var p = scelto.sentiero ? menu.percorsi.filter(function (x) { return x.id === scelto.sentiero; })[0] : null;
+      // Se il sentiero sta in un solo settore, il settore si imposta da solo.
+      if (p && !scelto.settore && p.settori.length === 1) scelto.settore = p.settori[0];
+      aggiornaDove();
+    });
 
     function ridisegna() {
       var conPosizione = elenco.filter(function (v) { return v.esito.lat !== null; }).length;
@@ -386,6 +472,8 @@
       var tutteInviate = leggibili().length > 0 && restanti === 0;
       pannelloInvio.hidden = leggibili().length === 0;
       etichettaData.hidden = aiutoData.hidden = tutteInviate;
+      aggiornaDove();
+      if (tutteInviate) dove.hidden = true;
       etichettaTutte.hidden = tutteInviate || restanti < 2 || etichette.length === 0;
       if (sceltaTutte.options.length !== etichette.length + 1) {
         sceltaTutte.textContent = '';
@@ -463,6 +551,8 @@
           voci: voci,
           idInvio: idInvio,
           dataSopralluogo: campoData.value,
+          settore: scelto.settore,
+          sentiero: scelto.sentiero,
           totaleFoto: leggibili().length,
           api: window.CaiApi.chiedi,
           aggiorna: function (leggero) { if (leggero) aggiornaBarre(); else ridisegna(); },
@@ -479,6 +569,13 @@
           etichetteCaricate = false;
           await caricaEtichette();
           voci.forEach(function (v) { if (v.codiceErrore === 'etichetta_non_valida') v.etichetta = ''; });
+        }
+        // Un settore o sentiero tolto dal menu nel frattempo: si ricarica il menu e si chiede di sceglierlo di nuovo.
+        if (voci.some(function (v) { return v.codiceErrore === 'sentiero_non_valido'; })) {
+          menuCaricato = false;
+          await caricaMenu();
+          scelto.settore = null;
+          scelto.sentiero = null;
         }
         ridisegna();
       }
@@ -505,7 +602,7 @@
       if (inCorso) return;
       inCorso = true;
       campo.disabled = true;
-      await caricaEtichette(); // i tipi di problema si caricano alla prima scelta di foto
+      await Promise.all([caricaEtichette(), caricaMenu()]); // i tipi di problema si caricano alla prima scelta di foto
       var contatore = { byte: 0 };
       var files = Array.prototype.slice.call(fileScelti);
       try {
@@ -573,6 +670,8 @@
       idInvio = null;
       dataModificata = false;
       esitoInvio = null;
+      scelto = { settore: null, comune: '', testo: '', sentiero: null };
+      campoCerca.value = '';
       stato.textContent = '';
       ridisegna();
     });

@@ -1,5 +1,5 @@
 // POST /api/carica/conferma   (solo volontari)
-// Corpo: { idInvio, dataSopralluogo?, totaleFoto, foto: [{ idFoto, idFileDrive, etichetta?, nota? }] }   (al massimo 100 foto)
+// Corpo: { idInvio, dataSopralluogo?, settore?, sentiero?, totaleFoto, foto: [{ idFoto, idFileDrive, etichetta?, nota? }] }   (al massimo 100 foto)
 // Dopo il caricamento su Drive, il server controlla ogni file (cartella, proprietario, tipo), rilegge
 // posizione e data dal file stesso (non si fida del browser) e aggiunge le righe nelle schede
 // "invii" e "foto". Ripetibile senza duplicati. Risposta: { registrate: [idFoto], errori: [{ idFoto, errore }] }
@@ -7,6 +7,7 @@ const { protetto } = require('../../_lib/auth');
 const { ErroApi, variabile, leggiScheda, aggiungiRighe } = require('../../_lib/sheets');
 const drive = require('../../_lib/drive');
 const { ALTRO, etichetteAttive, stessoNome } = require('../../_lib/etichette');
+const { menuSentieri, nomeSettore, testoSentiero } = require('../../_lib/sentieri');
 const CaiExif = require('../../../public/exif.js');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -92,6 +93,9 @@ module.exports = async (req, res) => {
         (typeof corpo.dataSopralluogo !== 'string' || !dataValida(corpo.dataSopralluogo))) {
       throw richiestaNonValida('dataSopralluogo non valida');
     }
+    ['settore', 'sentiero'].forEach((campo) => {
+      if (corpo[campo] !== undefined && corpo[campo] !== null && corpo[campo] !== '' && !Number.isInteger(corpo[campo])) throw richiestaNonValida(campo + ' non valido');
+    });
     if (!Array.isArray(corpo.foto) || corpo.foto.length < 1 || corpo.foto.length > MAX_FOTO) throw new ErroApi(400, 'troppe_foto');
     corpo.foto.forEach((f) => {
       if (!f || typeof f.idFoto !== 'string' || !UUID.test(f.idFoto) || typeof f.idFileDrive !== 'string' || !ID_DRIVE.test(f.idFileDrive)) {
@@ -104,6 +108,24 @@ module.exports = async (req, res) => {
       if (f.nota && f.nota.length > MAX_NOTA * 2) throw richiestaNonValida('nota troppo lunga');
     });
     if (new Set(corpo.foto.map((f) => f.idFoto)).size !== corpo.foto.length) throw richiestaNonValida('idFoto ripetuti');
+
+    // 0. Settore e sentiero (facoltativi): devono essere nel menu attuale; si scrivono nel foglio come testo leggibile.
+    let testoSettore = '';
+    let testoPercorso = '';
+    const idSettore = Number.isInteger(corpo.settore) ? corpo.settore : null;
+    const idSentiero = Number.isInteger(corpo.sentiero) ? corpo.sentiero : null;
+    if (idSettore !== null || idSentiero !== null) {
+      const menu = await menuSentieri();
+      const percorso = idSentiero !== null ? menu.percorsi.find((p) => p.id === idSentiero) : null;
+      if (idSentiero !== null && !percorso) throw new ErroApi(400, 'sentiero_non_valido');
+      // Con il solo sentiero, il settore è il primo (attivo) in cui il sentiero si trova.
+      const idEffettivo = idSettore !== null ? idSettore : (percorso ? percorso.settori[0] : null);
+      const settore = idEffettivo !== null ? menu.settori.find((s) => s.id === idEffettivo) : null;
+      if (idEffettivo !== null && !settore) throw new ErroApi(400, 'sentiero_non_valido');
+      if (percorso && settore && !percorso.settori.includes(settore.id)) throw new ErroApi(400, 'sentiero_non_valido');
+      testoSettore = settore ? nomeSettore(settore) : '';
+      testoPercorso = percorso ? testoSentiero(percorso) : '';
+    }
 
     // 1. Etichette (devono essere tra quelle attive) e controllo dei file su Drive, con errori per singola foto.
     const errori = [];
@@ -143,8 +165,8 @@ module.exports = async (req, res) => {
         email_volontario: utente.email,
         nome_volontario: utente.nome,
         data_sopralluogo: dataSopralluogo,
-        settore: '',
-        sentiero: '',
+        settore: testoSettore,
+        sentiero: testoPercorso,
         data_invio: new Date().toISOString(),
         num_foto: corpo.totaleFoto,
       }]);
