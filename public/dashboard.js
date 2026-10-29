@@ -14,6 +14,7 @@
   var MESSAGGI = {
     foto_non_trovata: 'Questa foto non è più nell\'elenco.',
     gia_rivista: 'Questa foto è già stata rivista da qualcun altro.',
+    non_rivista: 'Questa foto è già in attesa: non c\'è niente da annullare.',
     drive_non_trovato: 'La foto non si trova più su Drive.',
     drive_limite: 'Drive è molto occupato: aspetta qualche minuto e riprova.',
     drive_pieno: 'Lo spazio su Drive è esaurito.',
@@ -320,12 +321,17 @@
       var f = ultimo.foto.filter(function (x) { return ids.indexOf(x.idFoto) !== -1; });
       var senza = f.filter(senzaPosizione).length;
       var approva = azione === 'approva';
+      var annulla = azione === 'annulla';
       var quante = ids.length === 1 ? '1 foto' : ids.length + ' foto';
-      var testi = [{ testo: approva ? 'Le foto passeranno tra quelle approvate.' : 'Le foto saranno messe da parte come scartate e il motivo resterà registrato.' }];
+      var testi = [{ testo: annulla ? 'Le foto torneranno tra quelle «Da approvare» e potrai approvarle o rifiutarle di nuovo.' : (approva ? 'Le foto passeranno tra quelle approvate.' : 'Le foto saranno messe da parte come scartate e il motivo resterà registrato.') }];
+      if (annulla) {
+        var diMappa = f.filter(function (x) { return x.stato === 'approvata'; }).length;
+        if (diMappa) testi.push({ avviso: true, testo: diMappa === 1 ? '⚠️ 1 foto approvata sparirà dalla mappa finché non sarà approvata di nuovo.' : '⚠️ ' + diMappa + ' foto approvate spariranno dalla mappa finché non saranno approvate di nuovo.' });
+      }
       if (approva && senza) {
         testi.push({ avviso: true, testo: senza === 1 ? '⚠️ 1 di queste foto non ha la posizione: non comparirà sulla mappa.' : '⚠️ ' + senza + ' di queste foto non hanno la posizione: non compariranno sulla mappa.' });
       }
-      var risposta = await chiediConferma(approva ? 'Approvare ' + quante + '?' : 'Rifiutare ' + quante + '?', testi, approva ? 'Sì, approva' : 'Sì, rifiuta', !approva);
+      var risposta = await chiediConferma(annulla ? 'Rimettere in attesa ' + quante + '?' : (approva ? 'Approvare ' + quante + '?' : 'Rifiutare ' + quante + '?'), testi, annulla ? 'Sì, rimetti in attesa' : (approva ? 'Sì, approva' : 'Sì, rifiuta'), !approva && !annulla);
       if (!risposta) return;
 
       avviso.className = 'stato-lettura';
@@ -347,7 +353,7 @@
       var nomi = {};
       ultimo.foto.forEach(function (x) { nomi[x.idFoto] = x.nomeFile; });
       var righe = [];
-      if (buone.length) righe.push({ testo: '✅ ' + buone.length + (approva ? (buone.length === 1 ? ' foto approvata.' : ' foto approvate.') : (buone.length === 1 ? ' foto rifiutata.' : ' foto rifiutate.')) });
+      if (buone.length) righe.push({ testo: '✅ ' + buone.length + (annulla ? (buone.length === 1 ? ' foto rimessa in attesa.' : ' foto rimesse in attesa.') : approva ? (buone.length === 1 ? ' foto approvata.' : ' foto approvate.') : (buone.length === 1 ? ' foto rifiutata.' : ' foto rifiutate.')) });
       cattive.forEach(function (x) { righe.push({ avviso: true, testo: '⚠️ ' + (nomi[x.idFoto] || 'Foto') + ': ' + messaggio(x.errore) }); });
       mostraEsito(cattive.length ? 'Fatto, con qualche problema' : 'Fatto', righe);
       carica();
@@ -378,7 +384,7 @@
 
     function disegnaBarra(elenco) {
       barra.textContent = '';
-      barra.hidden = stato !== 'in_attesa' || elenco.length === 0;
+      barra.hidden = elenco.length === 0;
       if (barra.hidden) return;
       var scelti = Object.keys(selezione).filter(function (id) { return elenco.some(function (f) { return f.idFoto === id; }); });
       var tutte = document.createElement('input');
@@ -393,11 +399,17 @@
       etichetta.appendChild(tutte);
       etichetta.appendChild(el('span', null, ' Seleziona tutte (' + scelti.length + ' scelte)'));
       barra.appendChild(etichetta);
-      var approva = pulsante('Approva le scelte', '', function () { revisiona('approva', scelti); });
-      var rifiuta = pulsante('Rifiuta le scelte', 'pericolo', function () { revisiona('rifiuta', scelti); });
-      approva.disabled = rifiuta.disabled = scelti.length === 0;
-      barra.appendChild(approva);
-      barra.appendChild(rifiuta);
+      if (stato === 'in_attesa') {
+        var approva = pulsante('Approva le scelte', '', function () { revisiona('approva', scelti); });
+        var rifiuta = pulsante('Rifiuta le scelte', 'pericolo', function () { revisiona('rifiuta', scelti); });
+        approva.disabled = rifiuta.disabled = scelti.length === 0;
+        barra.appendChild(approva);
+        barra.appendChild(rifiuta);
+      } else {
+        var rimetti = pulsante('Rimetti in attesa le scelte', 'secondario', function () { revisiona('annulla', scelti); });
+        rimetti.disabled = scelti.length === 0;
+        barra.appendChild(rimetti);
+      }
     }
 
     // Tipo di problema, settore, sentiero e nota scritti dal volontario (i campi vuoti non si mostrano).
@@ -410,7 +422,7 @@
 
     function disegnaScheda(f) {
       var s = el('div', 'scheda-foto' + (senzaPosizione(f) ? ' senza-posizione' : ''));
-      if (stato === 'in_attesa') {
+      {
         var c = document.createElement('input');
         c.type = 'checkbox';
         c.className = 'scelta-foto';
@@ -455,6 +467,9 @@
       if (stato !== 'in_attesa') {
         d.appendChild(el('div', 'nota', (stato === 'approvata' ? 'Approvata' : 'Rifiutata') + ' da ' + (f.rivistaDa || '?') + (f.rivistaIl ? ' il ' + dataOra(f.rivistaIl) : '')));
         if (f.motivoRifiuto) d.appendChild(el('div', 'nota', 'Motivo: ' + f.motivoRifiuto));
+        var az2 = el('div', 'azioni-foto');
+        az2.appendChild(pulsante('Rimetti in attesa', 'piccolo secondario', function () { revisiona('annulla', [f.idFoto]); }));
+        d.appendChild(az2);
       } else {
         var az = el('div', 'azioni-foto');
         az.appendChild(pulsante('Approva', 'piccolo', function () { revisiona('approva', [f.idFoto]); }));

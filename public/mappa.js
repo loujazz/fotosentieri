@@ -45,6 +45,8 @@
     var tracciati = {}; // idPercorso -> { dati (numero, nome, ...), linea (L.polyline) }
     var menuSentieri = null;
     var sentieriCaricati = false;
+    var schermoIntero = false;
+    var pulsanteSchermo = null;
 
     contenitore.textContent = '';
     var riepilogo = el('p', 'stato-lettura');
@@ -75,15 +77,58 @@
     barraSentieri.hidden = true;
     var statoSentieri = el('p', 'nota');
     statoSentieri.setAttribute('aria-live', 'polite');
-    contenitore.appendChild(riepilogo);
-    contenitore.appendChild(barraSentieri);
-    contenitore.appendChild(statoSentieri);
-    contenitore.appendChild(area);
-    contenitore.appendChild(nota);
+    var blocco = el('div', 'blocco-mappa'); // tutto ciò che si ingrandisce con «Schermo intero»: filtri, mappa e note
+    contenitore.appendChild(blocco);
+    blocco.appendChild(riepilogo);
+    blocco.appendChild(barraSentieri);
+    blocco.appendChild(statoSentieri);
+    blocco.appendChild(area);
+    blocco.appendChild(nota);
+
+    // ---- schermo intero ----
+    // La mappa con i suoi filtri riempie tutta la finestra (non è lo schermo intero del browser: così foto ingrandite e
+    // schede restano visibili, e funziona anche su telefono e tablet). Si esce con lo stesso pulsante o con Esc.
+    function tastoEsc(e) {
+      if (e.key !== 'Escape' || document.querySelector('.modale-sfondo')) return; // con una foto aperta, Esc chiude prima la foto
+      impostaSchermoIntero(false);
+    }
+
+    function impostaSchermoIntero(attivo) {
+      if (schermoIntero === attivo) return;
+      schermoIntero = attivo;
+      blocco.classList.toggle('schermo-intero', attivo);
+      document.body.classList.toggle('mappa-a-tutto-schermo', attivo);
+      if (attivo) document.addEventListener('keydown', tastoEsc); else document.removeEventListener('keydown', tastoEsc);
+      if (pulsanteSchermo) {
+        pulsanteSchermo.textContent = attivo ? '✕ Esci dallo schermo intero' : '⛶ Schermo intero';
+        pulsanteSchermo.setAttribute('aria-pressed', attivo ? 'true' : 'false');
+      }
+      if (mappa) setTimeout(function () { if (mappa) mappa.invalidateSize(); }, 60);
+    }
+
+    function aggiungiControlloSchermo() {
+      var Controllo = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function () {
+          var c = L.DomUtil.create('div', 'leaflet-bar controllo-schermo');
+          var b = L.DomUtil.create('button', 'pulsante-schermo', c);
+          b.type = 'button';
+          b.title = 'Ingrandisci la mappa a tutto schermo';
+          b.textContent = schermoIntero ? '✕ Esci dallo schermo intero' : '⛶ Schermo intero';
+          b.setAttribute('aria-pressed', schermoIntero ? 'true' : 'false');
+          L.DomEvent.disableClickPropagation(c);
+          L.DomEvent.on(b, 'click', function () { impostaSchermoIntero(!schermoIntero); });
+          pulsanteSchermo = b;
+          return c;
+        },
+      });
+      new Controllo().addTo(mappa);
+    }
 
     function creaMappa() {
       if (mappa) return;
       mappa = L.map(area).setView(CENTRO_INIZIALE, ZOOM_INIZIALE);
+      aggiungiControlloSchermo();
       var stradale = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
@@ -385,6 +430,8 @@
 
     function azzera() {
       chiudiGrande();
+      impostaSchermoIntero(false);
+      pulsanteSchermo = null;
       Object.keys(miniature).forEach(function (id) { URL.revokeObjectURL(miniature[id]); });
       miniature = {};
       if (mappa) { mappa.remove(); mappa = null; gruppo = null; controlloLivelli = null; }
