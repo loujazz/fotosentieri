@@ -39,6 +39,32 @@ async function menuSentieri() {
   return { aggiornato: (dati && dati.aggiornato) || null, settori, percorsi, comuni };
 }
 
+// Tutti i percorsi sincronizzati (anche di settori oggi spenti), per ricavare i comuni di un invio. Copia in memoria per 5 minuti.
+let copiaPercorsi = { quando: 0, dati: null };
+async function tuttiIPercorsi() {
+  if (copiaPercorsi.dati && Date.now() - copiaPercorsi.quando < 5 * 60 * 1000) return copiaPercorsi.dati;
+  const dati = await leggiDato(DATI.percorsi);
+  copiaPercorsi = { quando: Date.now(), dati: (dati && dati.percorsi) || [] };
+  return copiaPercorsi.dati;
+}
+
+// Il percorso di un invio: dall'identificativo salvato (invii nuovi) oppure dal testo scritto allora («532 – Nome (Da → A)»),
+// con il solo numero come ripiego se è unico. Restituisce null se non si riesce a capire.
+function trovaPercorso(percorsi, invio) {
+  const id = Number(invio.sentiero_id);
+  if (invio.sentiero_id !== undefined && invio.sentiero_id !== '' && Number.isFinite(id)) {
+    const trovato = percorsi.find((p) => p.id === id);
+    if (trovato) return trovato;
+  }
+  const testo = String(invio.sentiero || '').trim();
+  if (!testo) return null;
+  const esatto = percorsi.find((p) => testoSentiero(p) === testo);
+  if (esatto) return esatto;
+  const ref = testo.split(/\s+/)[0];
+  const candidati = percorsi.filter((p) => String(p.ref) === ref);
+  return candidati.length === 1 ? candidati[0] : null;
+}
+
 const nomeSettore = (s) => (s.nome ? `${s.nome} (${s.codice})` : s.codice);
 
 // Il nome che manda il CAI comincia già con il numero («900 - Torrente Ravone - Parco del Paleotto»): non si ripete.
@@ -58,4 +84,4 @@ function testoSentiero(p) {
   return [p.ref, nome ? '– ' + nome : '', p.da && p.a ? `(${p.da} → ${p.a})` : ''].filter(Boolean).join(' ');
 }
 
-module.exports = { menuSentieri, nomeSettore, testoSentiero };
+module.exports = { menuSentieri, nomeSettore, testoSentiero, tuttiIPercorsi, trovaPercorso };

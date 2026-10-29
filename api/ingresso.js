@@ -13,6 +13,7 @@ const percorsi = {
   'carica/avvia': require('./_gestori/carica/avvia'),
   'carica/conferma': require('./_gestori/carica/conferma'),
   'admin/foto': require('./_gestori/admin/foto'),
+  'admin/elenco': require('./_gestori/admin/elenco'),
   'admin/anteprima': require('./_gestori/admin/anteprima'),
   'admin/revisione': require('./_gestori/admin/revisione'),
   'admin/mappa': require('./_gestori/admin/mappa'),
