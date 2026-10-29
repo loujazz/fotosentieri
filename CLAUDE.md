@@ -94,6 +94,24 @@ Repository privato `loujazz/FantinMaps`. **Usare il branch di produzione**, non 
 5. Dati del sopralluogo: data, settore, sentiero, etichette; sincronizzazione OSM2CAI e layer sentieri.
 6. Prova con 3-5 volontari, Android e iPhone.
 
+## Piano di lavoro (aggiornato 29/10/2026)
+
+Fatti e in uso: passi 1, 2, 3 e 4 (accesso, caricamento, dashboard, mappa). Prossimo: passo 5, poi la prova con i volontari (passo 6).
+
+**Affinamenti e miglioramenti da non dimenticare** (decisi o proposti; l'ordine si stabilisce insieme):
+
+1. **Dati e descrizioni del volontario, visibili agli admin (richiesto il 29/10/2026).** Oggi i volontari non possono aggiungere nulla; con il passo 5 potranno indicare settore e sentiero (per invio) ed etichetta e nota (per foto). Questi dati devono comparire a chi rivede: nella scheda della dashboard, nella scheda del punto sulla mappa («clicco sulla scheda e vedo i dati») e nella foto ingrandita. Le colonne ci sono già nel foglio (`etichetta` e `nota` in `foto`; `settore` e `sentiero` in `invii`) e sono vuote: basta che `api/admin/foto.js` e `api/admin/mappa.js` le restituiscano e che `public/dashboard.js` e `public/mappa.js` le mostrino (campi vuoti non mostrati). Da prevedere nel passo 5, non dopo.
+2. **Elenco dei propri invii per il volontario:** il brief lo prevede («vede solo "Carica foto" e l'elenco dei propri invii») ma oggi non esiste; serve una funzione per volontari (solo i propri invii) e una sezione nella loro vista, con lo stato di ogni foto (in attesa, approvata, rifiutata e motivo).
+3. **Correzione della posizione da parte dell'admin** per le foto senza GPS (con fonte `correzione_admin`), probabilmente con un punto da indicare sulla mappa.
+4. **Annullare una revisione** (riportare una foto approvata o rifiutata in attesa) e rivedere anche le foto già rivedute.
+5. **Più di 200 foto per stato** nella dashboard: paginazione o caricamento a richiesta.
+6. **Anteprima delle foto HEIC** dove il browser non le decodifica (conversione solo per la visualizzazione).
+7. **Gestione utenti e ruoli** da parte del super_admin, senza dover modificare il foglio a mano.
+8. **Notifica via email** agli admin quando arrivano foto nuove (Apps Script, come in Fantin Maps).
+9. **Mappa aperta ai volontari**, se il CAI lo vorrà (oggi solo admin e super_admin).
+10. **Informativa privacy** per foto e dati degli autori, e conferma del CAI sull'uso dell'API OSM2CAI.
+11. **Chiavi dell'account di servizio:** valutare l'alternativa senza chiavi scaricate (federazione delle identità per i workload).
+
 ## Verificato
 
 - Da Android, una pagina web aperta dal telefono perde la posizione; da iPhone dipende dall'opzione Posizione nel selettore.
