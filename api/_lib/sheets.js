@@ -197,6 +197,44 @@ async function assicuraColonna(nomeScheda, colonna) {
   }
 }
 
+// Cancella dalla scheda le righe il cui valore nella colonna indicata è tra "valori" (per esempio id_foto). Le righe si
+// cercano di nuovo subito prima di cancellare e si tolgono in una sola richiesta, dal basso verso l'alto, così i numeri
+// di riga non si spostano. L'intestazione (riga 1) non si tocca mai. Restituisce quante righe ha cancellato.
+async function eliminaRighe(nomeScheda, colonna, valori) {
+  const richiesti = new Set(valori.map(String));
+  if (!richiesti.size) return 0;
+  const righe = (await leggiScheda(nomeScheda, { conRiga: true })).filter((r) => richiesti.has(String(r[colonna])));
+  if (!righe.length) return 0;
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(variabile('SHEET_ID'))}`;
+  try {
+    const client = await clientGoogle();
+    const meta = await client.request({ url: `${base}?fields=sheets.properties(sheetId,title)` });
+    const foglio = ((meta.data && meta.data.sheets) || []).find((f) => f.properties && f.properties.title === nomeScheda);
+    if (!foglio) throw new ErroApi(500, 'errore_foglio', `Scheda "${nomeScheda}" non trovata`);
+    const richieste = righe.map((r) => r._riga).filter((n) => n >= 2).sort((a, b) => b - a).map((n) => ({
+      deleteDimension: { range: { sheetId: foglio.properties.sheetId, dimension: 'ROWS', startIndex: n - 1, endIndex: n } },
+    }));
+    await client.request({ url: `${base}:batchUpdate`, method: 'POST', data: { requests: richieste } });
+    return richieste.length;
+  } catch (errore) {
+    if (errore instanceof ErroApi) throw errore;
+    const stato = errore.response && errore.response.status;
+    console.error(`Eliminazione di righe dalla scheda "${nomeScheda}" non riuscita (HTTP ${stato || '?'}):`, errore.message);
+    throw new ErroApi(500, 'errore_foglio', `Impossibile eliminare righe dalla scheda "${nomeScheda}"`);
+  }
+}
+
+// Come aggiornaCelle, ma le righe si trovano dall'identificativo (per esempio id_foto) al momento di scrivere, non da un
+// numero di riga letto prima: se nel frattempo una riga è stata cancellata (o le righe si sono spostate), non si scrive
+// mai nella riga sbagliata. modifiche: [{ id, valori }]. Restituisce gli id che non ci sono più nella scheda.
+async function aggiornaCellePerId(nomeScheda, colonnaId, modifiche) {
+  if (!modifiche.length) return [];
+  const righe = new Map((await leggiScheda(nomeScheda, { conRiga: true })).map((r) => [String(r[colonnaId]), r._riga]));
+  const trovate = modifiche.filter((m) => righe.has(String(m.id)));
+  await aggiornaCelle(nomeScheda, trovate.map((m) => ({ riga: righe.get(String(m.id)), valori: m.valori })));
+  return modifiche.filter((m) => !righe.has(String(m.id))).map((m) => m.id);
+}
+
 function letteraColonna(indice) {
   let n = indice + 1;
   let lettera = '';
@@ -237,4 +275,4 @@ async function aggiornaCelle(nomeScheda, modifiche) {
   }
 }
 
-module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, aggiornaCelle, assicuraScheda, assicuraColonna, clientGoogle };
+module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, aggiornaCelle, aggiornaCellePerId, eliminaRighe, assicuraScheda, assicuraColonna, clientGoogle };

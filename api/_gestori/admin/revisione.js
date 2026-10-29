@@ -7,7 +7,7 @@
 // Risposta: { risultati: [{ idFoto, ok: true } | { idFoto, errore }] }
 // Ripetibile: se il file è già stato spostato ma il foglio non si è aggiornato, un secondo tentativo completa il lavoro.
 const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
-const { ErroApi, variabile, leggiScheda, aggiornaCelle } = require('../../_lib/sheets');
+const { ErroApi, variabile, leggiScheda, aggiornaCellePerId } = require('../../_lib/sheets');
 const drive = require('../../_lib/drive');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -82,13 +82,14 @@ module.exports = async (req, res) => {
 
     if (daAggiornare.length) {
       const quando = new Date().toISOString();
-      await aggiornaCelle('foto', daAggiornare.map((d) => ({
-        riga: d.riga,
+      // Le righe si cercano per id al momento di scrivere: una foto eliminata nel frattempo non sposta le altre.
+      const scomparse = await aggiornaCellePerId('foto', 'id_foto', daAggiornare.map((d) => ({
+        id: d.idFoto,
         valori: annulla
           ? { stato: 'in_attesa', rivista_da: '', rivista_il: '', motivo_rifiuto: '' }
           : { stato: approva ? 'approvata' : 'rifiutata', rivista_da: utente.email, rivista_il: quando, motivo_rifiuto: motivo },
       })));
-      daAggiornare.forEach((d) => risultati.set(d.idFoto, { idFoto: d.idFoto, ok: true }));
+      daAggiornare.forEach((d) => risultati.set(d.idFoto, scomparse.includes(d.idFoto) ? { idFoto: d.idFoto, errore: 'foto_non_trovata' } : { idFoto: d.idFoto, ok: true }));
     }
     risposta.status(200).json({ risultati: corpo.foto.map((id) => risultati.get(id)) });
   })(req, res);

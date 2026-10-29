@@ -7,6 +7,8 @@
 
   var CENTRO_INIZIALE = [44.4949, 11.3426]; // Bologna
   var ZOOM_INIZIALE = 9;
+  // Bologna e provincia: la mappa si apre sempre qui (e si torna qui con «Bologna e provincia»), anche con foto altrove.
+  var PROVINCIA = [[43.95, 10.85], [44.85, 11.97]];
   var ZOOM_MASSIMO_ADATTAMENTO = 15;
 
   function el(tag, classe, testo) {
@@ -116,13 +118,22 @@
           b.title = 'Ingrandisci la mappa a tutto schermo';
           b.textContent = schermoIntero ? '✕ Esci dallo schermo intero' : '⛶ Schermo intero';
           b.setAttribute('aria-pressed', schermoIntero ? 'true' : 'false');
+          var casa = L.DomUtil.create('button', 'pulsante-schermo', c);
+          casa.type = 'button';
+          casa.title = 'Torna a vedere Bologna e provincia';
+          casa.textContent = '⌂ Bologna e provincia';
           L.DomEvent.disableClickPropagation(c);
           L.DomEvent.on(b, 'click', function () { impostaSchermoIntero(!schermoIntero); });
+          L.DomEvent.on(casa, 'click', function () { vistaProvincia(); });
           pulsanteSchermo = b;
           return c;
         },
       });
       new Controllo().addTo(mappa);
+    }
+
+    function vistaProvincia() {
+      if (mappa) mappa.fitBounds(PROVINCIA);
     }
 
     function creaMappa() {
@@ -377,11 +388,6 @@
         gruppo.addLayer(marcatore);
         punti.push([f.lat, f.lon]);
       });
-      if (punti.length) {
-        mappa.fitBounds(L.latLngBounds(punti), { padding: [40, 40], maxZoom: ZOOM_MASSIMO_ADATTAMENTO });
-      } else {
-        mappa.setView(CENTRO_INIZIALE, ZOOM_INIZIALE);
-      }
       riepilogo.className = 'stato-lettura';
       riepilogo.textContent = dati.totale === 0
         ? 'Ancora nessuna foto approvata con la posizione.'
@@ -415,8 +421,10 @@
 
     // Da chiamare quando la sezione diventa visibile (Leaflet ha bisogno di conoscere la dimensione).
     function mostra() {
+      var nuova = !mappa;
       creaMappa();
       mappa.invalidateSize();
+      if (nuova) vistaProvincia(); // la mappa si apre su Bologna e provincia
       return Promise.all([carica(), sentieriCaricati ? Promise.resolve() : (resetSentieri(), caricaSentieri())]);
     }
 

@@ -14,6 +14,9 @@
   var MESSAGGI = {
     foto_non_trovata: 'Questa foto non è più nell\'elenco.',
     gia_rivista: 'Questa foto è già stata rivista da qualcun altro.',
+    drive_non_consentito: 'Il robot non ha il permesso di eliminare su Drive. Nel Drive condiviso serve il ruolo «Gestore dei contenuti» (o «Gestore») per l\'account di servizio.',
+    file_non_valido: 'Questo file non sta nelle cartelle delle foto: non si elimina.',
+    errore_foglio: 'La foto non c\'è più su Drive, ma il foglio non si è aggiornato. Riprova a eliminarla: completa il lavoro.',
     non_rivista: 'Questa foto è già in attesa: non c\'è niente da annullare.',
     drive_non_trovato: 'La foto non si trova più su Drive.',
     drive_limite: 'Drive è molto occupato: aspetta qualche minuto e riprova.',
@@ -58,7 +61,9 @@
     return f.lat === null || f.lon === null;
   }
 
-  function avvia(contenitore) {
+  // opzioni.puoEliminare: solo il super amministratore vede i pulsanti per eliminare (il server lo controlla comunque).
+  function avvia(contenitore, opzioni) {
+    var puoEliminare = Boolean(opzioni && opzioni.puoEliminare);
     var stato = 'in_attesa';
     var soloSenza = false;
     var ultimo = null; // ultima risposta di /api/admin/foto
@@ -245,14 +250,15 @@
         esito.textContent = '';
       }
 
-      mappa = L.map(area).setView(punto ? [punto.lat, punto.lon] : [44.4949, 11.3426], punto ? 15 : 10);
+      mappa = L.map(area);
+      if (punto) mappa.setView([punto.lat, punto.lon], 15); else mappa.fitBounds([[43.95, 10.85], [44.85, 11.97]]); // senza punto, Bologna e provincia
       var stradale = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' });
       var topografica = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', attribution: '© OpenStreetMap, SRTM · stile © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA)' });
       stradale.addTo(mappa);
       L.control.layers({ 'Mappa stradale': stradale, 'Mappa topografica': topografica }, null, { collapsed: true }).addTo(mappa);
       mappa.on('click', function (e) { indica(e.latlng.lat, e.latlng.lng); });
       if (punto) indica(punto.lat, punto.lon);
-      setTimeout(function () { if (mappa) mappa.invalidateSize(); }, 50);
+      setTimeout(function () { if (mappa) { mappa.invalidateSize(); if (!punto) mappa.fitBounds([[43.95, 10.85], [44.85, 11.97]]); } }, 50);
 
       window.CaiApi.blob('/api/admin/anteprima?id=' + encodeURIComponent(f.idFoto) + '&misura=piccola').then(function (blob) {
         var indirizzo = URL.createObjectURL(blob);
@@ -359,6 +365,65 @@
       carica();
     }
 
+    // ---- eliminazione definitiva (solo super amministratore) ----
+    function eliminaFoto(ids) {
+      var f = ultimo.foto.filter(function (x) { return ids.indexOf(x.idFoto) !== -1; });
+      var quante = ids.length === 1 ? '1 foto' : ids.length + ' foto';
+      var c = el('div');
+      c.appendChild(el('h3', null, 'Eliminare per sempre ' + quante + '?'));
+      c.appendChild(el('p', 'avviso-testo', '⚠️ Le foto saranno cancellate da Drive e dal foglio. Non si può annullare e non si possono recuperare.'));
+      var diMappa = f.filter(function (x) { return x.stato === 'approvata'; }).length;
+      if (diMappa) c.appendChild(el('p', 'messaggio', diMappa === 1 ? '1 foto approvata sparirà anche dalla mappa.' : diMappa + ' foto approvate spariranno anche dalla mappa.'));
+      c.appendChild(el('p', 'messaggio', 'Se serve solo togliere una foto dall\'elenco, usa «Rifiuta» o «Rimetti in attesa»: si possono annullare.'));
+      c.appendChild(el('label', 'etichetta-motivo', 'Per confermare scrivi ELIMINA'));
+      var campo = document.createElement('input');
+      campo.type = 'text';
+      campo.autocomplete = 'off';
+      campo.setAttribute('aria-label', 'Scrivi ELIMINA per confermare');
+      c.appendChild(campo);
+      var errore = el('p', 'avviso-testo');
+      c.appendChild(errore);
+      var azioni = el('div', 'azioni-modale');
+      azioni.appendChild(pulsante('Annulla', 'secondario', chiudiModale));
+      azioni.appendChild(pulsante('Elimina per sempre', 'pericolo', function () {
+        if (campo.value.trim().toUpperCase() !== 'ELIMINA') { errore.textContent = 'Scrivi la parola ELIMINA per confermare.'; campo.focus(); return; }
+        chiudiModale();
+        eseguiEliminazione(ids);
+      }));
+      c.appendChild(azioni);
+      apriModale(c);
+      campo.focus();
+    }
+
+    async function eseguiEliminazione(ids) {
+      avviso.className = 'stato-lettura';
+      avviso.textContent = 'Sto eliminando… non chiudere la pagina.';
+      var nomi = {};
+      ultimo.foto.forEach(function (x) { nomi[x.idFoto] = x.nomeFile; });
+      var r;
+      try {
+        r = await window.CaiApi.chiedi('/api/admin/elimina', { method: 'POST', body: { foto: ids } });
+      } catch (errore) {
+        avviso.textContent = '';
+        return mostraEsito('Operazione non riuscita', [{ avviso: true, testo: messaggio(errore && errore.message === 'sessione_scaduta' ? 'sessione_scaduta' : 'rete') }]);
+      }
+      avviso.textContent = '';
+      if (r.stato !== 200 || !r.corpo || !r.corpo.risultati) {
+        return mostraEsito('Operazione non riuscita', [{ avviso: true, testo: messaggio(r.corpo && r.corpo.errore) }]);
+      }
+      var buone = r.corpo.risultati.filter(function (x) { return x.ok; });
+      var cattive = r.corpo.risultati.filter(function (x) { return !x.ok; });
+      buone.forEach(function (x) { delete selezione[x.idFoto]; });
+      var righe = [];
+      var definitive = buone.filter(function (x) { return !x.cestino; }).length;
+      var cestino = buone.length - definitive;
+      if (definitive) righe.push({ testo: '🗑️ ' + definitive + (definitive === 1 ? ' foto eliminata per sempre.' : ' foto eliminate per sempre.') });
+      if (cestino) righe.push({ avviso: true, testo: '⚠️ ' + cestino + (cestino === 1 ? ' foto è sparita dal sito ma sta ancora nel cestino di Drive' : ' foto sono sparite dal sito ma stanno ancora nel cestino di Drive') + ' (si cancella da sola dopo 30 giorni). Per eliminare subito i file serve che il robot sia «Gestore» del Drive condiviso, oppure svuota a mano il cestino del Drive condiviso.' });
+      cattive.forEach(function (x) { righe.push({ avviso: true, testo: '⚠️ ' + (nomi[x.idFoto] || 'Foto') + ': ' + messaggio(x.errore) }); });
+      mostraEsito(cattive.length ? 'Fatto, con qualche problema' : 'Fatto', righe);
+      carica();
+    }
+
     // ---- disegno ----
     function visibili() {
       return ultimo ? ultimo.foto.filter(function (f) { return !soloSenza || senzaPosizione(f); }) : [];
@@ -409,6 +474,11 @@
         var rimetti = pulsante('Rimetti in attesa le scelte', 'secondario', function () { revisiona('annulla', scelti); });
         rimetti.disabled = scelti.length === 0;
         barra.appendChild(rimetti);
+      }
+      if (puoEliminare) {
+        var elimina = pulsante('Elimina per sempre le scelte', 'pericolo', function () { eliminaFoto(scelti); });
+        elimina.disabled = scelti.length === 0;
+        barra.appendChild(elimina);
       }
     }
 
@@ -475,6 +545,11 @@
         az.appendChild(pulsante('Approva', 'piccolo', function () { revisiona('approva', [f.idFoto]); }));
         az.appendChild(pulsante('Rifiuta', 'piccolo pericolo', function () { revisiona('rifiuta', [f.idFoto]); }));
         d.appendChild(az);
+      }
+      if (puoEliminare) {
+        var az3 = el('div', 'azioni-foto');
+        az3.appendChild(pulsante('Elimina per sempre', 'piccolo pericolo', function () { eliminaFoto([f.idFoto]); }));
+        d.appendChild(az3);
       }
       s.appendChild(d);
       return s;
