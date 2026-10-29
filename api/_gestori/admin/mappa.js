@@ -1,8 +1,8 @@
 // GET /api/admin/mappa   (admin e super_admin)
 // Le foto approvate con la posizione, per la mappa, più il numero di quelle approvate senza posizione
 // (che non si possono mettere sulla mappa). Le miniature si chiedono a parte con /api/admin/anteprima.
-const { RUOLI_ADMIN, protetto } = require('../_lib/auth');
-const { leggiScheda } = require('../_lib/sheets');
+const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
+const { leggiScheda } = require('../../_lib/sheets');
 
 const LIMITE = 5000;
 

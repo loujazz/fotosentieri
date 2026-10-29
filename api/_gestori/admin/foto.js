@@ -1,7 +1,7 @@
 // GET /api/admin/foto?stato=in_attesa|approvata|rifiutata   (admin e super_admin)
 // Elenco delle foto di uno stato (le 200 più recenti) con autore e data del sopralluogo, più i conteggi per stato.
-const { RUOLI_ADMIN, protetto } = require('../_lib/auth');
-const { ErroApi, leggiScheda } = require('../_lib/sheets');
+const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
+const { ErroApi, leggiScheda } = require('../../_lib/sheets');
 
 const STATI = ['in_attesa', 'approvata', 'rifiutata'];
 const LIMITE = 200;

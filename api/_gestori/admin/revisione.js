@@ -4,9 +4,9 @@
 // Poi il foglio riceve stato, chi ha rivisto, quando e il motivo. Solo le foto "in_attesa" si possono rivedere.
 // Risposta: { risultati: [{ idFoto, ok: true } | { idFoto, errore }] }
 // Ripetibile: se il file è già stato spostato ma il foglio non si è aggiornato, un secondo tentativo completa il lavoro.
-const { RUOLI_ADMIN, protetto } = require('../_lib/auth');
-const { ErroApi, variabile, leggiScheda, aggiornaCelle } = require('../_lib/sheets');
-const drive = require('../_lib/drive');
+const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
+const { ErroApi, variabile, leggiScheda, aggiornaCelle } = require('../../_lib/sheets');
+const drive = require('../../_lib/drive');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_FOTO = 100;

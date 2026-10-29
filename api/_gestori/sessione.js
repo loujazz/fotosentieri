@@ -2,8 +2,8 @@
 //  - con l'ID token di Google (accesso): rilascia il biglietto di sessione del sito (12 ore);
 //  - con un biglietto di sessione ancora valido (rinnovo): ne rilascia uno nuovo.
 // Risposta: { sessione, scade, email, nome, ruolo }
-const { RUOLI, protetto } = require('./_lib/auth');
-const sessione = require('./_lib/sessione');
+const { RUOLI, protetto } = require('../_lib/auth');
+const sessione = require('../_lib/sessione');
 
 const emetti = protetto(RUOLI, async (req, res, utente, identita) => {
   const nuovo = identita.origine === 'google' ? sessione.emetti(utente.email) : sessione.rinnova(identita);

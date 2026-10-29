@@ -4,10 +4,10 @@
 // I settori arrivano dalla sincronizzazione con OSM2CAI nella scheda "settori" del foglio (solo un codice, per
 // esempio HBOE8). Gli admin danno un nome comprensibile e scelgono quali settori compaiono ai volontari.
 // La sincronizzazione non cambia mai nome e attivo dei settori già presenti.
-const { RUOLI_ADMIN, protetto } = require('../_lib/auth');
-const { ErroApi, leggiScheda, aggiornaCelle } = require('../_lib/sheets');
-const { leggiDato } = require('../_lib/drive');
-const { DATI } = require('../_lib/sincronizzazione');
+const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
+const { ErroApi, leggiScheda, aggiornaCelle } = require('../../_lib/sheets');
+const { leggiDato } = require('../../_lib/drive');
+const { DATI } = require('../../_lib/sincronizzazione');
 
 const MAX_NOME = 60;
 
