@@ -25,6 +25,7 @@
     file_non_valido: 'La foto non è arrivata correttamente. Riprova a inviarla.',
     ruolo_non_ammesso: 'Il tuo account non può inviare foto.',
     non_abilitato: 'Il tuo account non è abilitato.',
+    etichetta_non_valida: 'Il tipo di problema scelto non è più disponibile. Sceglilo di nuovo e riprova.',
     caricata_non_registrata: 'La foto è su Drive ma non è ancora registrata. Premi «Invia» per riprovare.',
     generico: 'Il servizio ha avuto un problema. Riprova tra poco; se continua, avvisa un amministratore.',
   };
@@ -103,6 +104,7 @@
   }
 
   function segnaErrore(voce, codice, mantieniCaricata) {
+    voce.codiceErrore = codice;
     voce.errore = messaggio(codice);
     voce.stato = mantieniCaricata ? 'caricata' : 'errore';
     voce.progresso = 0;
@@ -162,7 +164,7 @@
         idInvio: o.idInvio,
         dataSopralluogo: o.dataSopralluogo || '',
         totaleFoto: o.totaleFoto,
-        foto: blocco.map(function (v) { return { idFoto: v.idFoto, idFileDrive: v.idFileDrive }; }),
+        foto: blocco.map(function (v) { return { idFoto: v.idFoto, idFileDrive: v.idFileDrive, etichetta: v.etichetta || '', nota: v.nota || '' }; }),
       });
     } catch (errore) {
       // La foto è già su Drive: si riprova solo la registrazione, senza ricaricarla.
@@ -193,8 +195,14 @@
     var aggiorna = o.aggiorna;
     var voci = o.voci.filter(function (v) { return v.stato !== 'inviata'; });
     voci.forEach(function (v) {
-      if (v.stato !== 'caricata') { v.stato = 'in_invio'; v.progresso = 0; }
+      if (v.idFileDrive) {
+        v.stato = 'caricata'; // già su Drive: si riprova solo la registrazione
+      } else if (v.stato !== 'caricata') {
+        v.stato = 'in_invio';
+        v.progresso = 0;
+      }
       v.errore = null;
+      v.codiceErrore = null;
     });
     aggiorna();
 

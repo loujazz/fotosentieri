@@ -131,3 +131,10 @@ button.miniatura:hover { background: #dfe3da; }
 .scheda-mappa button.miniatura { height: 150px; margin-bottom: 8px; }
 .scheda-mappa .nome-foto { margin-bottom: 4px; }
 .leaflet-container { font: inherit; }
+
+/* Tipo di problema e nota del volontario */
+.descrizione-foto { display: grid; gap: 8px; margin: 10px 0 4px; }
+.campo-descrizione { display: block; font-weight: 600; font-size: .9rem; }
+.campo-descrizione select, .campo-descrizione input, .campo-data select { display: block; width: 100%; font: inherit; font-weight: 400; padding: 10px 12px; margin-top: 4px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; }
+.etichetta-foto { font-weight: 700; margin-top: 4px; }
+.nota-volontario { white-space: pre-wrap; word-break: break-word; background: #f3f1e8; border-radius: 8px; padding: 8px 10px; margin: 6px 0; font-size: .95rem; }

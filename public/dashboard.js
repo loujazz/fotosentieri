@@ -199,6 +199,7 @@
       c.appendChild(el('h3', 'nome-foto', f.nomeFile));
       var area = el('div', 'foto-grande', 'Sto caricando la foto…');
       c.appendChild(area);
+      aggiungiDescrizione(c, f);
       c.appendChild(el('p', 'nota', senzaPosizione(f) ? '⚠️ Senza posizione' : '📍 ' + f.lat.toFixed(6) + ', ' + f.lon.toFixed(6)));
       c.appendChild(el('div', 'azioni-modale')).appendChild(pulsante('Chiudi', '', chiudiModale));
       apriModale(c, { larga: true });
@@ -300,6 +301,14 @@
       barra.appendChild(rifiuta);
     }
 
+    // Tipo di problema, settore, sentiero e nota scritti dal volontario (i campi vuoti non si mostrano).
+    function aggiungiDescrizione(contenitoreScheda, f) {
+      if (f.etichetta) contenitoreScheda.appendChild(el('div', 'etichetta-foto', '🏷️ ' + f.etichetta));
+      var dove = [f.settore ? 'Settore ' + f.settore : '', f.sentiero ? 'Sentiero ' + f.sentiero : ''].filter(Boolean).join(' · ');
+      if (dove) contenitoreScheda.appendChild(el('div', null, '🥾 ' + dove));
+      if (f.nota) contenitoreScheda.appendChild(el('div', 'nota-volontario', '💬 ' + f.nota));
+    }
+
     function disegnaScheda(f) {
       var s = el('div', 'scheda-foto' + (senzaPosizione(f) ? ' senza-posizione' : ''));
       if (stato === 'in_attesa') {
@@ -324,6 +333,7 @@
       var d = el('div', 'dati-foto');
       d.appendChild(el('strong', 'nome-foto', f.nomeFile));
       d.appendChild(el('div', null, '👤 ' + (f.volontario.nome || f.volontario.email || 'autore sconosciuto')));
+      aggiungiDescrizione(d, f);
       if (f.dataSopralluogo) d.appendChild(el('div', 'nota', 'Sopralluogo del ' + soloData(f.dataSopralluogo)));
       if (f.dataScatto) d.appendChild(el('div', 'nota', 'Scattata il ' + dataOra(f.dataScatto)));
       if (senzaPosizione(f)) {

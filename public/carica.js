@@ -154,6 +154,9 @@
     var idInvio = null;
     var dataModificata = false;
     var esitoInvio = null; // { inviate, nonInviate } dell'ultimo tentativo
+    var etichette = []; // tipi di problema tra cui scegliere (dal foglio)
+    var etichetteCaricate = false;
+    var etichetteNonDisponibili = false;
 
     contenitore.textContent = '';
     var scelta = el('label', 'scelta-file');
@@ -180,18 +183,74 @@
     var campoData = document.createElement('input');
     campoData.type = 'date';
     etichettaData.appendChild(campoData);
+    var etichettaTutte = el('label', 'campo-data');
+    etichettaTutte.appendChild(el('span', null, 'Stesso problema per tutte le foto'));
+    var sceltaTutte = document.createElement('select');
+    etichettaTutte.appendChild(sceltaTutte);
+    sceltaTutte.addEventListener('change', function () {
+      var valore = sceltaTutte.value;
+      sceltaTutte.value = '';
+      if (!valore) return;
+      daInviare().forEach(function (v) { v.etichetta = valore; });
+      ridisegna();
+    });
     var aiutoData = el('p', 'nota', 'È la data della prima foto: correggila se il sopralluogo è stato un altro giorno.');
     var pulsanteInvia = el('button', 'grande', 'Invia');
     pulsanteInvia.type = 'button';
     var avanzamento = el('p', 'stato-lettura');
     avanzamento.setAttribute('aria-live', 'polite');
-    [etichettaData, aiutoData, pulsanteInvia, avanzamento].forEach(function (n) { pannelloInvio.appendChild(n); });
+    [etichettaTutte, etichettaData, aiutoData, pulsanteInvia, avanzamento].forEach(function (n) { pannelloInvio.appendChild(n); });
 
     [scelta, aiuto, stato, riepilogo, lista, pannelloInvio, dettagliIgnorati, svuota].forEach(function (n) { contenitore.appendChild(n); });
 
     function liberaAnteprima(voce) {
       if (voce.anteprima) URL.revokeObjectURL(voce.anteprima);
       voce.anteprima = null;
+    }
+
+    // Tipo di problema e nota di una foto (entrambi facoltativi). Si scrive direttamente sulla voce,
+    // senza ridisegnare l'elenco, così non si perde il cursore mentre si scrive.
+    function controlliDescrizione(voce) {
+      var c = el('div', 'descrizione-foto');
+      if (etichette.length) {
+        var e = el('label', 'campo-descrizione');
+        e.appendChild(el('span', null, 'Che problema c\'è?'));
+        var sel = document.createElement('select');
+        sel.appendChild(new Option('Nessuno in particolare', ''));
+        etichette.forEach(function (nome) { sel.appendChild(new Option(nome, nome)); });
+        sel.value = etichette.indexOf(voce.etichetta) !== -1 ? voce.etichetta : '';
+        sel.disabled = inviando;
+        sel.addEventListener('change', function () { voce.etichetta = sel.value; });
+        e.appendChild(sel);
+        c.appendChild(e);
+      }
+      var n = el('label', 'campo-descrizione');
+      n.appendChild(el('span', null, 'Nota (facoltativa)'));
+      var campoNota = document.createElement('input');
+      campoNota.type = 'text';
+      campoNota.maxLength = 300;
+      campoNota.placeholder = 'Per esempio: albero caduto dopo il ponte';
+      campoNota.value = voce.nota;
+      campoNota.disabled = inviando;
+      campoNota.addEventListener('input', function () { voce.nota = campoNota.value; });
+      n.appendChild(campoNota);
+      c.appendChild(n);
+      return c;
+    }
+
+    function caricaEtichette() {
+      if (etichetteCaricate || !window.CaiApi) return Promise.resolve();
+      return window.CaiApi.chiedi('/api/etichette').then(function (r) {
+        if (r.stato === 200 && r.corpo && Array.isArray(r.corpo.etichette)) {
+          etichette = r.corpo.etichette;
+          etichetteCaricate = true;
+          etichetteNonDisponibili = false;
+        } else {
+          etichetteNonDisponibili = true;
+        }
+      }).catch(function () {
+        etichetteNonDisponibili = true;
+      });
     }
 
     function ridisegna() {
@@ -213,6 +272,9 @@
         }
         if (illeggibili) {
           riepilogo.appendChild(el('div', 'nota', 'Le foto non leggibili non vengono inviate.'));
+        }
+        if (etichetteNonDisponibili) {
+          riepilogo.appendChild(el('div', 'nota', 'Non riesco a caricare l\'elenco dei tipi di problema: puoi inviare le foto lo stesso, con la sola nota.'));
         }
       }
 
@@ -241,6 +303,7 @@
           dati.appendChild(el('div', 'esito-foto', '⚠️ Senza posizione'));
           dati.appendChild(el('div', 'nota', r.exif ? MSG_SENZA_POSIZIONE : MSG_SENZA_DATI));
         }
+        if (voce.stato !== 'inviata' && !r.errore) dati.appendChild(controlliDescrizione(voce));
         voce.barra = null;
         voce.testoBarra = null;
         if (voce.stato === 'inviata') {
@@ -254,6 +317,9 @@
           dati.appendChild(voce.testoBarra);
         } else if (voce.stato === 'caricata' && !voce.errore) {
           dati.appendChild(el('div', 'nota', 'Caricata su Drive, sto registrando…'));
+        }
+        if (voce.stato === 'inviata' && (voce.etichetta || voce.nota)) {
+          dati.appendChild(el('div', 'nota', [voce.etichetta ? '🏷️ ' + voce.etichetta : '', voce.nota ? '💬 ' + voce.nota : ''].filter(Boolean).join(' · ')));
         }
         if (voce.errore) dati.appendChild(el('div', 'nota avviso-testo', voce.errore));
         if (!voce.idFileDrive && voce.stato !== 'in_invio' && !inviando) {
@@ -306,6 +372,13 @@
       var tutteInviate = leggibili().length > 0 && restanti === 0;
       pannelloInvio.hidden = leggibili().length === 0;
       etichettaData.hidden = aiutoData.hidden = tutteInviate;
+      etichettaTutte.hidden = tutteInviate || restanti < 2 || etichette.length === 0;
+      if (sceltaTutte.options.length !== etichette.length + 1) {
+        sceltaTutte.textContent = '';
+        sceltaTutte.appendChild(new Option('Scegli per applicarlo a tutte…', ''));
+        etichette.forEach(function (nome) { sceltaTutte.appendChild(new Option(nome, nome)); });
+      }
+      sceltaTutte.disabled = inviando;
       pulsanteInvia.hidden = tutteInviate;
       if (!dataModificata && !inviando) campoData.value = dataSuggerita();
       campoData.disabled = inviando;
@@ -370,6 +443,12 @@
       } finally {
         inviando = false;
         window.removeEventListener('beforeunload', avvisoUscita);
+        // Un tipo di problema tolto dal foglio nel frattempo: si ricarica l'elenco e si chiede di sceglierlo di nuovo.
+        if (voci.some(function (v) { return v.codiceErrore === 'etichetta_non_valida'; })) {
+          etichetteCaricate = false;
+          await caricaEtichette();
+          voci.forEach(function (v) { if (v.codiceErrore === 'etichetta_non_valida') v.etichetta = ''; });
+        }
         ridisegna();
       }
     }
@@ -383,7 +462,8 @@
       var voce = {
         chiave: chiave, nome: nome, file: file, esito: esito, anteprima: null,
         idFoto: nuovoUuid(), tipo: ESTENSIONI[estensione(nome)],
-        stato: 'da_inviare', progresso: 0, errore: null, idFileDrive: null, barra: null, testoBarra: null,
+        stato: 'da_inviare', progresso: 0, errore: null, codiceErrore: null, idFileDrive: null, barra: null, testoBarra: null,
+        etichetta: '', nota: '',
       };
       elenco.push(voce);
       voce.anteprima = await creaAnteprima(file);
@@ -394,6 +474,7 @@
       if (inCorso) return;
       inCorso = true;
       campo.disabled = true;
+      await caricaEtichette(); // i tipi di problema si caricano alla prima scelta di foto
       var contatore = { byte: 0 };
       var files = Array.prototype.slice.call(fileScelti);
       try {

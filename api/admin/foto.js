@@ -40,6 +40,10 @@ module.exports = async (req, res) => {
         rivistaIl: f.rivista_il,
         motivoRifiuto: f.motivo_rifiuto,
         volontario: { nome: invio.nome_volontario || '', email: invio.email_volontario || '' },
+        etichetta: f.etichetta || '',
+        nota: f.nota || '',
+        settore: invio.settore || '',
+        sentiero: invio.sentiero || '',
         dataSopralluogo: invio.data_sopralluogo || '',
         dataInvio: invio.data_invio || '',
       };

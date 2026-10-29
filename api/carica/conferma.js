@@ -1,17 +1,19 @@
 // POST /api/carica/conferma   (solo volontari)
-// Corpo: { idInvio, dataSopralluogo?, totaleFoto, foto: [{ idFoto, idFileDrive }] }   (al massimo 100 foto)
+// Corpo: { idInvio, dataSopralluogo?, totaleFoto, foto: [{ idFoto, idFileDrive, etichetta?, nota? }] }   (al massimo 100 foto)
 // Dopo il caricamento su Drive, il server controlla ogni file (cartella, proprietario, tipo), rilegge
 // posizione e data dal file stesso (non si fida del browser) e aggiunge le righe nelle schede
 // "invii" e "foto". Ripetibile senza duplicati. Risposta: { registrate: [idFoto], errori: [{ idFoto, errore }] }
 const { protetto } = require('../_lib/auth');
 const { ErroApi, variabile, leggiScheda, aggiungiRighe } = require('../_lib/sheets');
 const drive = require('../_lib/drive');
+const { etichetteAttive } = require('../_lib/etichette');
 const CaiExif = require('../../public/exif.js');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID_DRIVE = /^[A-Za-z0-9_-]{10,100}$/;
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_FOTO = 100;
+const MAX_NOTA = 500;
 const TIPI_AMMESSI = ['image/jpeg', 'image/heic', 'image/heif'];
 
 function richiestaNonValida(motivo) {
@@ -25,6 +27,11 @@ function leggiCorpo(req) {
   } catch (errore) {
     throw richiestaNonValida('corpo non valido');
   }
+}
+
+// La nota è testo libero del volontario: si tolgono i caratteri di controllo e si limita la lunghezza.
+function pulisciNota(nota) {
+  return String(nota || '').replace(/[\u0000-\u001F\u007F]+/g, ' ').trim().slice(0, MAX_NOTA);
 }
 
 function dataValida(testo) {
@@ -90,15 +97,26 @@ module.exports = async (req, res) => {
       if (!f || typeof f.idFoto !== 'string' || !UUID.test(f.idFoto) || typeof f.idFileDrive !== 'string' || !ID_DRIVE.test(f.idFileDrive)) {
         throw richiestaNonValida('foto non valida');
       }
+      if ((f.etichetta !== undefined && typeof f.etichetta !== 'string') || (f.nota !== undefined && typeof f.nota !== 'string')) {
+        throw richiestaNonValida('etichetta o nota non valide');
+      }
+      if (f.etichetta && f.etichetta.length > 100) throw richiestaNonValida('etichetta troppo lunga');
+      if (f.nota && f.nota.length > MAX_NOTA * 2) throw richiestaNonValida('nota troppo lunga');
     });
     if (new Set(corpo.foto.map((f) => f.idFoto)).size !== corpo.foto.length) throw richiestaNonValida('idFoto ripetuti');
 
-    // 1. Controllo dei file su Drive e lettura dei dati dello scatto, con errori per singola foto.
+    // 1. Etichette (devono essere tra quelle attive) e controllo dei file su Drive, con errori per singola foto.
     const errori = [];
     const verificate = [];
+    const scelte = corpo.foto.some((f) => f.etichetta) ? await etichetteAttive() : [];
     await conLimite(corpo.foto, 4, async (f) => {
+      const etichetta = f.etichetta ? scelte.find((e) => e.toLowerCase() === f.etichetta.trim().toLowerCase()) : '';
+      if (f.etichetta && !etichetta) {
+        errori.push({ idFoto: f.idFoto, errore: 'etichetta_non_valida' });
+        return;
+      }
       try {
-        verificate.push({ foto: f, ...(await verificaFile(f, corpo.idInvio, utente.email)) });
+        verificate.push({ foto: f, etichetta: etichetta, nota: pulisciNota(f.nota), ...(await verificaFile(f, corpo.idInvio, utente.email)) });
       } catch (errore) {
         if (!(errore instanceof ErroApi)) throw errore;
         errori.push({ idFoto: f.idFoto, errore: errore.codice });
@@ -137,8 +155,8 @@ module.exports = async (req, res) => {
         longitudine: posizione ? v.esito.lon : '',
         fonte_posizione: posizione ? 'EXIF' : '',
         data_scatto: v.esito.dataScatto || '',
-        etichetta: '',
-        nota: '',
+        etichetta: v.etichetta,
+        nota: v.nota,
         stato: 'in_attesa',
         rivista_da: '',
         rivista_il: '',
