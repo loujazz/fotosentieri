@@ -6,6 +6,17 @@
   <title>Guida per i volontari · Segnalazioni sentieri</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="guida/guida.css">
+  <script>
+    // Se un'immagine non c'è ancora (schermate di Google in preparazione), al suo posto compare un riquadro vuoto con la descrizione.
+    function segnaposto(img) {
+      var s = document.createElement('div');
+      s.className = 'segnaposto';
+      s.setAttribute('role', 'img');
+      s.setAttribute('aria-label', 'Immagine in arrivo: ' + img.getAttribute('data-segnaposto'));
+      s.appendChild(document.createTextNode('🖼️ In arrivo: ' + img.getAttribute('data-segnaposto')));
+      img.replaceWith(s);
+    }
+  </script>
 </head>
 <body>
   <header class="testata">
@@ -28,7 +39,7 @@
     <h3>Di cosa hai bisogno</h3>
     <ul>
       <li>Un <strong>computer</strong> (Windows o Mac) con Chrome, Edge, Firefox o Safari.</li>
-      <li>Il tuo account <strong>Google dell'associazione</strong> (finisce con <strong>@caibo.it</strong>). Se non riesci a entrare, scrivi a un amministratore: va abilitato.</li>
+      <li>Il tuo account <strong>Google dell'associazione</strong> (finisce con <strong>@caibo.it</strong>). Se non riesci a entrare, scrivi a <a data-contatto href="#">un amministratore</a>: va abilitato.</li>
       <li><strong>Google Foto</strong> sul telefono, con la copia automatica delle foto attiva.</li>
     </ul>
 
@@ -65,24 +76,24 @@
       <li>Se hai scelto più foto, Google crea un file <strong>ZIP</strong> (per esempio «Photos-001.zip»). <strong>Non serve aprirlo né estrarlo</strong>: lo carichi così com'è.</li>
       <li>Il file finisce nella cartella <strong>Download</strong> (o «Scaricati») del computer.</li>
     </ol>
-    <figure class="stretta"><a href="guida/img/google-foto-1-selezione.png" target="_blank" rel="noopener"><img src="guida/img/google-foto-1-selezione.png" alt="Google Foto: le foto selezionate con il cerchio in alto a sinistra" onerror="this.closest('figure').hidden = true"></a><figcaption>Le foto selezionate in Google Foto (clic per ingrandire).</figcaption></figure>
-    <figure class="stretta"><a href="guida/img/google-foto-2-scarica.png" target="_blank" rel="noopener"><img src="guida/img/google-foto-2-scarica.png" alt="Google Foto: il menu con i tre puntini e la voce Scarica" onerror="this.closest('figure').hidden = true"></a><figcaption>Il menu con i tre puntini e la voce «Scarica».</figcaption></figure>
+    <figure class="stretta"><img src="guida/img/google-foto-1-selezione.png" alt="Google Foto: le foto selezionate con il cerchio in alto a sinistra" data-segnaposto="Google Foto: come selezionare le foto" onerror="segnaposto(this)"><figcaption>Le foto selezionate in Google Foto.</figcaption></figure>
+    <figure class="stretta"><img src="guida/img/google-foto-2-scarica.png" alt="Google Foto: il menu con i tre puntini e la voce Scarica" data-segnaposto="Google Foto: il menu «Scarica»" onerror="segnaposto(this)"><figcaption>Il menu con i tre puntini e la voce «Scarica».</figcaption></figure>
     <div class="riquadro attenzione" role="note">
       <h3>Importante</h3>
       <p>Scarica <strong>dal sito di Google Foto sul computer</strong>. Non farti mandare le foto per email o WhatsApp e non copiarle in altri modi: così <strong>perdono la posizione</strong>.</p>
     </div>
     <div class="riquadro da-verificare" role="note">
       <h3>Se una foto risulta «Senza posizione»</h3>
-      <p>Se la localizzazione era attiva e il sito dice comunque «Senza posizione», avvisa un amministratore indicando che telefono usi (Android o iPhone) e come hai scaricato le foto. Stiamo ancora verificando alcuni casi (per esempio Google Foto con la qualità «Risparmio spazio» e le foto di iPhone).</p>
+      <p>Se la localizzazione era attiva e il sito dice comunque «Senza posizione», avvisa <a data-contatto href="#">un amministratore</a> indicando che telefono usi (Android o iPhone) e come hai scaricato le foto. Stiamo ancora verificando alcuni casi (per esempio Google Foto con la qualità «Risparmio spazio» e le foto di iPhone).</p>
     </div>
 
     <h2 id="entra"><span class="passo">2</span>Apri il sito ed entra</h2>
     <ol>
       <li>Apri l'indirizzo del sito: <strong id="indirizzo-sito">quello che ti ha dato il CAI</strong>.</li>
       <li>Premi il pulsante blu di Google e scegli il tuo account <strong>@caibo.it</strong>. Non usare un account personale (per esempio Gmail): non funziona.</li>
-      <li>Se compare «Non sei ancora abilitato», scrivi a un amministratore con il tuo indirizzo @caibo.it: va abilitato.</li>
+      <li>Se compare «Non sei ancora abilitato», scrivi a <a data-contatto href="#">un amministratore</a> con il tuo indirizzo @caibo.it: va abilitato.</li>
     </ol>
-    <figure class="stretta"><a href="guida/img/accesso-google.png" target="_blank" rel="noopener"><img src="guida/img/accesso-google.png" alt="La pagina di accesso con il pulsante di Google" onerror="this.closest('figure').hidden = true"></a><figcaption>La pagina di accesso.</figcaption></figure>
+    <figure class="stretta"><img src="guida/img/accesso-google.png" alt="La pagina di accesso con il pulsante di Google" data-segnaposto="La pagina di accesso con il pulsante di Google" onerror="segnaposto(this)"><figcaption>La pagina di accesso.</figcaption></figure>
     <p>La prima volta parte da solo un <strong>giro guidato</strong> che mostra dove cliccare. Puoi rivederlo quando vuoi con il pulsante <span class="tasto">❓ Come si usa</span>.</p>
     <figure><a href="guida/img/giro-passo2.png" target="_blank" rel="noopener"><img src="guida/img/giro-passo2.png" alt="Il giro guidato evidenzia il pulsante Scegli foto"></a><figcaption>Il giro guidato.</figcaption></figure>
 
@@ -156,11 +167,11 @@
     </details>
     <details>
       <summary>Dice «Senza posizione», ma avevo la localizzazione attiva</summary>
-      <p>La causa più comune è che la foto sia passata da un altro canale (email, WhatsApp, salvataggio dall'app del telefono), che toglie la posizione. Riscaricala dal sito di Google Foto <strong>sul computer</strong>, come nel passo 1. Se succede ancora, avvisa un amministratore.</p>
+      <p>La causa più comune è che la foto sia passata da un altro canale (email, WhatsApp, salvataggio dall'app del telefono), che toglie la posizione. Riscaricala dal sito di Google Foto <strong>sul computer</strong>, come nel passo 1. Se succede ancora, avvisa <a data-contatto href="#">un amministratore</a>.</p>
     </details>
     <details>
       <summary>Non riesco a entrare</summary>
-      <p>Controlla di aver scelto l'account che finisce con <strong>@caibo.it</strong>. Se compare «Non sei ancora abilitato», scrivi a un amministratore con il tuo indirizzo: va aggiunto all'elenco degli utenti.</p>
+      <p>Controlla di aver scelto l'account che finisce con <strong>@caibo.it</strong>. Se compare «Non sei ancora abilitato», scrivi a <a data-contatto href="#">un amministratore</a> con il tuo indirizzo: va aggiunto all'elenco degli utenti.</p>
     </details>
     <details>
       <summary>Il sito mi chiede di accedere di nuovo</summary>
@@ -168,7 +179,7 @@
     </details>
     <details>
       <summary>Ho inviato una foto per sbaglio</summary>
-      <p>Scrivi a un amministratore dicendo quale foto e di quale giorno: può rifiutarla o eliminarla.</p>
+      <p>Scrivi a <a data-contatto href="#">un amministratore</a> dicendo quale foto e di quale giorno: può rifiutarla o eliminarla.</p>
     </details>
     <details>
       <summary>Chi vede le mie foto?</summary>
@@ -181,12 +192,13 @@
 
     <div class="riquadro informazione" role="note">
       <h3>Hai ancora un dubbio?</h3>
-      <p>Scrivi a un amministratore del CAI Bologna «Mario Fantin». Più sei preciso («ho scaricato da Google Foto dal computer, il file è uno ZIP, la foto X dice senza posizione»), più è facile aiutarti.</p>
+      <p>Scrivi a <a data-contatto href="#">un amministratore</a> del CAI Bologna «Mario Fantin». Più sei preciso («ho scaricato da Google Foto dal computer, il file è uno ZIP, la foto X dice senza posizione»), più è facile aiutarti.</p>
     </div>
     <div class="barra-guida"><a class="pulsante-link" href="./">← Torna al sito</a></div>
   </main>
 
   <div class="solo-stampa">Questa guida non si stampa: cambia quando cambia il sito e una copia stampata o salvata diventa presto sbagliata. Aprila online per avere sempre la versione aggiornata.</div>
+  <script src="contatti.js"></script>
   <script>
     // Mostra l'indirizzo vero del sito (così la guida resta giusta anche se l'indirizzo cambia).
     (function () {

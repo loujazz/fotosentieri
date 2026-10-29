@@ -30,3 +30,7 @@
   body > * { display: none !important; }
   body > .solo-stampa { display: block !important; padding: 40px; font-size: 18pt; }
 }
+
+/* Immagini non ancora disponibili (per esempio le schermate di Google Foto): riquadro vuoto al loro posto */
+.guida .segnaposto { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 170px; padding: 16px; border: 3px dashed var(--bordo); border-radius: 10px; background: #fbfaf5; color: var(--grigio); font-weight: 600; }
+.guida figure.stretta .segnaposto { max-width: 420px; }
