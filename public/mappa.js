@@ -58,13 +58,19 @@
     etichettaComune.appendChild(el('span', null, 'Sentieri CAI: comune'));
     var sceltaComune = document.createElement('select');
     etichettaComune.appendChild(sceltaComune);
+    var etichettaSentiero = el('label', 'campo-data');
+    etichettaSentiero.appendChild(el('span', null, 'Sentiero del comune'));
+    var sceltaSentiero = document.createElement('select');
+    sceltaSentiero.disabled = true;
+    etichettaSentiero.appendChild(sceltaSentiero);
     var etichettaCerca = el('label', 'campo-data');
-    etichettaCerca.appendChild(el('span', null, 'Cerca un sentiero per numero o nome'));
+    etichettaCerca.appendChild(el('span', null, 'Oppure cerca per numero o nome'));
     var campoCerca = document.createElement('input');
     campoCerca.type = 'search';
     campoCerca.autocomplete = 'off';
     etichettaCerca.appendChild(campoCerca);
     barraSentieri.appendChild(etichettaComune);
+    barraSentieri.appendChild(etichettaSentiero);
     barraSentieri.appendChild(etichettaCerca);
     barraSentieri.hidden = true;
     var statoSentieri = el('p', 'nota');
@@ -114,15 +120,17 @@
       if (!menuSentieri || !livelloSentieri) return;
       var comune = sceltaComune.value;
       var testo = campoCerca.value;
+      var scelto = sceltaSentiero.value; // un sentiero scelto dall'elenco del comune
       var visibili = {};
-      window.CaiMenu.filtra(menuSentieri, { comune: comune, testo: testo }).forEach(function (p) { visibili[p.id] = true; });
+      if (scelto) visibili[scelto] = true;
+      else window.CaiMenu.filtra(menuSentieri, { comune: comune, testo: testo }).forEach(function (p) { visibili[p.id] = true; });
       var limiti = null;
       var mostrati = 0;
       Object.keys(tracciati).forEach(function (id) {
         var t = tracciati[id];
         if (visibili[id]) {
           if (!livelloSentieri.hasLayer(t.linea)) livelloSentieri.addLayer(t.linea);
-          t.linea.setStyle(comune || testo ? STILE_RISALTO : STILE);
+          t.linea.setStyle(comune || testo || scelto ? STILE_RISALTO : STILE);
           limiti = limiti ? limiti.extend(t.linea.getBounds()) : L.latLngBounds(t.linea.getBounds().getSouthWest(), t.linea.getBounds().getNorthEast());
           mostrati++;
         } else if (livelloSentieri.hasLayer(t.linea)) {
@@ -130,7 +138,8 @@
         }
       });
       if ((comune || testo) && limiti) mappa.fitBounds(limiti, { padding: [40, 40], maxZoom: ZOOM_MASSIMO_ADATTAMENTO });
-      if (comune || testo) {
+      if (scelto && tracciati[scelto]) tracciati[scelto].linea.openPopup(tracciati[scelto].linea.getBounds().getCenter());
+      if (comune || testo || scelto) {
         statoSentieri.textContent = mostrati === 0 ? 'Nessun sentiero corrisponde.' : (mostrati === 1 ? '1 sentiero trovato.' : mostrati + ' sentieri trovati.');
       } else {
         statoSentieri.textContent = Object.keys(tracciati).length + ' sentieri CAI sulla mappa. Cliccando un sentiero si vedono numero, nome e comuni.';
@@ -165,6 +174,7 @@
       sceltaComune.textContent = '';
       sceltaComune.appendChild(new Option('Tutti i comuni', ''));
       menuSentieri.comuni.forEach(function (c) { sceltaComune.appendChild(new Option(c, c)); });
+      riempiSentieriDelComune();
       barraSentieri.hidden = false;
       var perId = {};
       menuSentieri.percorsi.forEach(function (p) { perId[p.id] = p; });
@@ -191,7 +201,7 @@
           var scheda = null;
           linea.bindPopup(function () { if (!scheda) scheda = schedaSentiero(p); return scheda; }, { maxWidth: 280 });
           linea.on('mouseover', function () { linea.setStyle({ weight: 6 }); });
-          linea.on('mouseout', function () { linea.setStyle(sceltaComune.value || campoCerca.value ? STILE_RISALTO : STILE); });
+          linea.on('mouseout', function () { linea.setStyle(sceltaComune.value || campoCerca.value || sceltaSentiero.value ? STILE_RISALTO : STILE); });
           tracciati[id] = { dati: p, linea: linea };
           livelloSentieri.addLayer(linea);
         });
@@ -205,8 +215,23 @@
       }
     }
 
-    sceltaComune.addEventListener('change', applicaFiltro);
-    campoCerca.addEventListener('input', applicaFiltro);
+    // Il menu dei sentieri si riempie quando si sceglie un comune; senza comune resta spento.
+    function riempiSentieriDelComune() {
+      sceltaSentiero.textContent = '';
+      var comune = sceltaComune.value;
+      sceltaSentiero.disabled = !comune || !menuSentieri;
+      if (!comune || !menuSentieri) {
+        sceltaSentiero.appendChild(new Option('Scegli prima un comune', ''));
+        return;
+      }
+      var elenco = window.CaiMenu.filtra(menuSentieri, { comune: comune });
+      sceltaSentiero.appendChild(new Option('Tutti i sentieri del comune (' + elenco.length + ')', ''));
+      elenco.forEach(function (p) { sceltaSentiero.appendChild(new Option(window.CaiMenu.testoSentiero(p), String(p.id))); });
+    }
+
+    sceltaComune.addEventListener('change', function () { riempiSentieriDelComune(); campoCerca.value = ''; applicaFiltro(); });
+    sceltaSentiero.addEventListener('change', function () { campoCerca.value = ''; applicaFiltro(); });
+    campoCerca.addEventListener('input', function () { sceltaSentiero.value = ''; applicaFiltro(); });
 
     // ---- foto ingrandita ----
     function chiudiGrande() {
@@ -370,6 +395,8 @@
       barraSentieri.hidden = true;
       statoSentieri.textContent = '';
       campoCerca.value = '';
+      sceltaSentiero.textContent = '';
+      sceltaComune.value = '';
       riepilogo.textContent = '';
       nota.textContent = '';
     }
