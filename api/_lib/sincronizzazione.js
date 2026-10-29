@@ -174,8 +174,13 @@ async function faseElenco(ctx) {
   const { stato, cfg } = ctx;
   while (stato.cursoreCella < stato.celle.length) {
     if (ctx.finito()) return;
-    const ids = await osm.percorsiInRiquadro(stato.celle[stato.cursoreCella], cfg.sda);
-    if (!ids || typeof ids !== 'object' || Array.isArray(ids)) throw new ErroApi(502, 'osm2cai_risposta', 'Elenco dei percorsi in un formato inatteso');
+    let ids = await osm.percorsiInRiquadro(stato.celle[stato.cursoreCella], cfg.sda);
+    // Un riquadro senza percorsi può tornare come [] (elenco vuoto, come fanno i server PHP) invece che {}.
+    if (Array.isArray(ids) && ids.length === 0) ids = {};
+    if (!ids || typeof ids !== 'object' || Array.isArray(ids)) {
+      const visto = Array.isArray(ids) ? 'un elenco' : (ids === null ? 'null' : typeof ids);
+      throw new ErroApi(502, 'osm2cai_risposta', `Elenco dei percorsi in un formato inatteso (riquadro ${stato.celle[stato.cursoreCella].join(',')}, ricevuto ${visto})`);
+    }
     Object.keys(ids).forEach((id) => { stato.elenco[id] = ids[id]; });
     stato.cursoreCella++;
     stato.avanzamento.fatti = stato.cursoreCella;
