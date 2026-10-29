@@ -166,7 +166,6 @@ Fatti e in uso: passi 1, 2, 3 e 4 (accesso, caricamento, dashboard, mappa). Pass
 
 - 29/10/2026, mappa a schermo intero provata **solo in locale** (Chromium): pulsante presente, mappa più grande che riempie la finestra, filtri e filtro per comune usabili, Esc, entrata e uscita ripetute, nessuna sezione cambiata a schermo intero, riapertura della mappa non a schermo intero.
 
-- 29/10/2026, sul sito reale (riferito dal responsabile): annullamento delle revisioni e mappa a schermo intero funzionano (provati dal responsabile).
 - 29/10/2026, utenti e ruoli provati **solo con Google simulato** (Chromium e richieste dirette): permessi (401, volontario e admin 403), elenco senza dati interni, validazioni (email, dominio, ruolo, azione sconosciuta), email in minuscolo, nome ripulito e scritto come testo, doppione 409, modifica di ruolo e stato, disattivato = 403 subito e riattivato = di nuovo dentro, nessuna modifica su se stessi, almeno un super_admin attivo, colonna `ultimo_accesso` creata e riempita al primo accesso (e non riscritta entro un'ora), scheda «Utenti» visibile solo al super_admin, aggiunta/cambio ruolo/disattivazione/ricerca dalla pagina.
 
 ## Da verificare
