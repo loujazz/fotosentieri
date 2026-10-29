@@ -2,7 +2,10 @@
   "crons": [
     { "path": "/api/sync/cron", "schedule": "17 2 * * *" }
   ],
+  "rewrites": [
+    { "source": "/api/:ruta*", "destination": "/api/ingresso?ruta=:ruta*" }
+  ],
   "functions": {
-    "api/[...ruta].js": { "maxDuration": 60 }
+    "api/ingresso.js": { "maxDuration": 60 }
   }
 }
