@@ -24,6 +24,7 @@ function traduciErrore(errore, azione) {
   if (motivi.some((m) => MOTIVI_SPAZIO.includes(m))) return new ErroApi(503, 'drive_pieno');
   if (stato === 429 || motivi.some((m) => MOTIVI_LIMITE.includes(m))) return new ErroApi(503, 'drive_limite');
   if (stato === 404) return new ErroApi(500, 'drive_non_trovato');
+  if (stato === 403) return new ErroApi(500, 'drive_non_consentito'); // l'account di servizio non ha il permesso richiesto
   return new ErroApi(500, 'errore_drive');
 }
 
@@ -155,6 +156,34 @@ async function sposta(idFile, cartellaArrivo) {
   return true;
 }
 
+// Elimina DEFINITIVAMENTE un file (non lo mette nel cestino). Per sicurezza elimina solo file che stanno in una delle
+// cartelle indicate (le tre cartelle delle foto): un id sbagliato nel foglio non può cancellare altro.
+// Restituisce 'eliminato', oppure 'assente' se non c'era già più (ripetibile).
+// In un Drive condiviso Google permette di eliminare per sempre solo a chi è «Gestore» del drive (non basta «Gestore dei
+// contenuti»): se manca il permesso, il file va nel cestino del Drive (si può fare anche con «Gestore dei contenuti» e si
+// svuota da solo dopo 30 giorni) e si restituisce 'cestino', così chi usa il sito sa che non è sparito del tutto.
+async function elimina(idFile, cartelleAmmesse) {
+  let meta;
+  try {
+    meta = await metadati(idFile);
+  } catch (errore) {
+    if (errore instanceof ErroApi && errore.codice === 'drive_non_trovato') return 'assente';
+    throw errore;
+  }
+  if (!(meta.parents || []).some((g) => cartelleAmmesse.includes(g))) throw new ErroApi(409, 'file_non_valido');
+  const url = `${API}${encodeURIComponent(idFile)}?supportsAllDrives=true`;
+  try {
+    await chiedi({ url, method: 'DELETE' }, 'eliminazione del file');
+    return 'eliminato';
+  } catch (errore) {
+    if (errore instanceof ErroApi && errore.codice === 'drive_non_trovato') return 'assente';
+    if (!(errore instanceof ErroApi) || errore.codice !== 'drive_non_consentito') throw errore;
+  }
+  if (meta.trashed) return 'cestino';
+  await chiedi({ url: url + '&fields=id', method: 'PATCH', data: { trashed: true } }, 'spostamento del file nel cestino');
+  return 'cestino';
+}
+
 // ---- File di dati dell'applicazione (JSON) nel Drive condiviso ----
 // Servono ai dati sincronizzati (settori e percorsi del CAI). Sono file creati dall'account di servizio
 // (visibili con lo scope drive.file), nella radice del Drive condiviso, riconosciuti dalla proprietà "dati".
@@ -210,4 +239,4 @@ async function scriviDato(nome, oggetto) {
   }, 'creazione di un file di dati');
 }
 
-module.exports = { impronta, creaSessioneCaricamento, metadati, fileDrive, miniatura, sposta, leggiDato, scriviDato, traduciErrore };
+module.exports = { impronta, creaSessioneCaricamento, metadati, fileDrive, miniatura, sposta, elimina, leggiDato, scriviDato, traduciErrore };

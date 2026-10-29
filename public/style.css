@@ -191,7 +191,7 @@ details.invio summary { cursor: pointer; }
 .anteprima-posizione img { width: 100%; border-radius: 8px; display: block; }
 
 /* Mappa a tutto schermo */
-.controllo-schermo button.pulsante-schermo { background: #fff; color: var(--verde); border: 0; border-radius: 4px; padding: 8px 12px; font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer; white-space: nowrap; }
+.controllo-schermo button.pulsante-schermo { display: block; width: 100%; text-align: left; background: #fff; color: var(--verde); border: 0; border-radius: 4px; padding: 8px 12px; font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer; white-space: nowrap; }
 .blocco-mappa.schermo-intero { position: fixed; inset: 0; z-index: 5; background: var(--sfondo); padding: 10px 14px; display: flex; flex-direction: column; overflow: auto; }
 .blocco-mappa.schermo-intero .area-mappa { flex: 1 1 auto; height: auto; min-height: 320px; margin: 6px 0; }
 body.mappa-a-tutto-schermo { overflow: hidden; }

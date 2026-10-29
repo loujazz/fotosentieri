@@ -19,6 +19,7 @@ const percorsi = {
   'admin/tracciati': require('./_gestori/admin/tracciati'),
   'admin/posizione': require('./_gestori/admin/posizione'),
   'admin/utenti': require('./_gestori/admin/utenti'),
+  'admin/elimina': require('./_gestori/admin/elimina'),
   'admin/categorie': require('./_gestori/admin/categorie'),
   'admin/settori': require('./_gestori/admin/settori'),
   'admin/sync': require('./_gestori/admin/sync'),

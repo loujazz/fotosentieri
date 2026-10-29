@@ -66,7 +66,7 @@ Per tenere traccia, a ogni passo c'è una riga **«Copia → VARIABILE»**: dice
 
 - [ ] Apri <https://drive.google.com> con un account `@caibo.it` → a sinistra **Drive condivisi** → **Nuovo**. Nome: `Segnalazioni sentieri` (archivio separato da Fantin Maps).
 - [ ] Dentro il Drive condiviso crea tre cartelle con **esattamente** questi nomi: `Da approvare`, `Approvate`, `Scartate`.
-- [ ] **Dare accesso all'account di servizio:** nel Drive condiviso, nome del drive → **Gestisci i membri** → aggiungi l'email dell'account di servizio (passo 5) con ruolo **Gestore dei contenuti**. Togli la spunta all'invio di notifiche se richiesto.
+- [ ] **Dare accesso all'account di servizio:** nel Drive condiviso, nome del drive → **Gestisci i membri** → aggiungi l'email dell'account di servizio (passo 5) con ruolo **Gestore dei contenuti** (con questo ruolo l'eliminazione delle foto dal sito le mette nel cestino di Drive; per eliminarle subito e per sempre serve il ruolo **Gestore**: decidilo con il responsabile). Togli la spunta all'invio di notifiche se richiesto.
 - [ ] **Non** attivare mai la condivisione «chiunque abbia il link» su drive, cartelle o file.
 
 Come trovare gli ID:

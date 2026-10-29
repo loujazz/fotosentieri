@@ -171,7 +171,7 @@
       }
       if (r.corpo.ruolo === 'admin' || r.corpo.ruolo === 'super_admin') {
         $('admin-ruolo').textContent = r.corpo.ruolo === 'super_admin' ? 'super amministratore' : 'amministratore';
-        if (!pannello) pannello = window.Dashboard.avvia($('dashboard-contenuto'));
+        pannello = window.Dashboard.avvia($('dashboard-contenuto'), { puoEliminare: r.corpo.ruolo === 'super_admin' });
         if (!mappa) mappa = window.Mappa.avvia($('mappa-contenuto'));
         if (!categorie) categorie = window.Categorie.avvia($('categorie-contenuto'));
         if (!sentieri) sentieri = window.Sentieri.avvia($('sentieri-contenuto'));

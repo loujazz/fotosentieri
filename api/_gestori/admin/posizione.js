@@ -3,7 +3,7 @@
 // un amministratore): si scrivono solo latitudine, longitudine e fonte_posizione = "correzione_admin".
 // Una posizione letta dal file (EXIF) non si cambia. Risposta: { idFoto, lat, lon, fontePosizione }.
 const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
-const { ErroApi, leggiScheda, aggiornaCelle } = require('../../_lib/sheets');
+const { ErroApi, leggiScheda, aggiornaCellePerId } = require('../../_lib/sheets');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FONTE = 'correzione_admin';
@@ -49,7 +49,8 @@ module.exports = async (req, res) => {
     const haPosizione = numero(riga.latitudine) !== null && numero(riga.longitudine) !== null;
     if (haPosizione && riga.fonte_posizione !== FONTE) throw new ErroApi(409, 'posizione_gia_presente'); // quella del file non si tocca
 
-    await aggiornaCelle('foto', [{ riga: riga._riga, valori: { latitudine: lat, longitudine: lon, fonte_posizione: FONTE } }]);
+    const scomparse = await aggiornaCellePerId('foto', 'id_foto', [{ id: corpo.idFoto, valori: { latitudine: lat, longitudine: lon, fonte_posizione: FONTE } }]);
+    if (scomparse.length) throw new ErroApi(404, 'foto_non_trovata');
     risposta.status(200).json({ idFoto: corpo.idFoto, lat, lon, fontePosizione: FONTE });
   })(req, res);
 };
