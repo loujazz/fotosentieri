@@ -8,6 +8,7 @@
   var configurazione = null;
   var pannello = null; // controllo della dashboard degli amministratori
   var mappa = null; // controllo della mappa (amministratori)
+  var categorie = null; // controllo della pagina delle categorie (amministratori)
   var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
 
   var $ = function (id) { return document.getElementById(id); };
@@ -121,10 +122,13 @@
   function mostraSezioneAdmin(nome) {
     $('sezione-foto').hidden = nome !== 'foto';
     $('sezione-mappa').hidden = nome !== 'mappa';
+    $('sezione-categorie').hidden = nome !== 'categorie';
     Array.prototype.forEach.call(document.querySelectorAll('#admin-navigazione button'), function (b) {
       b.classList.toggle('attiva', b.getAttribute('data-sezione') === nome);
     });
-    return nome === 'mappa' ? mappa.mostra() : pannello.ricarica();
+    if (nome === 'mappa') return mappa.mostra();
+    if (nome === 'categorie') return categorie.mostra();
+    return pannello.ricarica();
   }
 
   // Dopo l'accesso con Google: il server verifica l'ID token, controlla il foglio e rilascia
@@ -150,6 +154,7 @@
         $('admin-ruolo').textContent = r.corpo.ruolo === 'super_admin' ? 'super amministratore' : 'amministratore';
         if (!pannello) pannello = window.Dashboard.avvia($('dashboard-contenuto'));
         if (!mappa) mappa = window.Mappa.avvia($('mappa-contenuto'));
+        if (!categorie) categorie = window.Categorie.avvia($('categorie-contenuto'));
         mostra('admin');
         return mostraSezioneAdmin('foto');
       }
@@ -185,6 +190,7 @@
     if (caricamento) caricamento.azzera();
     if (pannello) pannello.azzera();
     if (mappa) mappa.azzera();
+    if (categorie) categorie.azzera();
     if (window.google && window.google.accounts) window.google.accounts.id.disableAutoSelect();
     mostraAccesso();
   }

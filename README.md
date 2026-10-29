@@ -9,11 +9,11 @@ Servizio per i volontari della sentieristica del CAI Bologna «Mario Fantin»: c
 - `public/`: pagina web (HTML, CSS e JavaScript semplice, nessun bundler). `public/vendor/`: librerie copiate nel repository (fflate, Leaflet).
 - `api/`: funzioni Vercel.
   - `api/me.js`: configurazione per la pagina di accesso e «chi sono». `api/sessione.js`: dopo l'accesso con Google rilascia (e rinnova) il biglietto di sessione del sito.
-  - `api/etichette.js`: tipi di problema attivi (scheda `etichette`) per il menu del volontario.
+  - `api/etichette.js`: tipi di problema attivi (scheda `etichette`) più «Altro» per il menu del volontario; `api/admin/categorie.js`: gestione delle categorie da parte degli admin.
   - `api/carica/avvia.js` e `api/carica/conferma.js`: sessioni di caricamento su Drive e registrazione nel foglio (solo volontari).
-  - `api/admin/foto.js`, `anteprima.js`, `revisione.js`, `mappa.js`: elenco, miniature, revisione e punti della mappa (solo admin e super_admin).
+  - `api/admin/foto.js`, `anteprima.js`, `revisione.js`, `mappa.js`, `categorie.js`: elenco, miniature, revisione, punti della mappa e categorie (solo admin e super_admin).
 - `api/_lib/`: `auth.js` (verifica del biglietto o dell'ID token e del ruolo: **ogni funzione nuova va esportata con `protetto([...ruoli], gestore)`**, così il controllo dei permessi avviene sempre sul server), `sheets.js` (foglio Google), `drive.js` (Drive), `sessione.js` (biglietto firmato), `etichette.js`.
-- Pagine: `public/app.js` (accesso e viste), `public/exif.js` (lettura GPS, JPEG e HEIC), `public/carica.js` e `public/invio.js` (vista «Carica foto» e invio), `public/dashboard.js` e `public/mappa.js` (vista admin).
+- Pagine: `public/app.js` (accesso e viste), `public/exif.js` (lettura GPS, JPEG e HEIC), `public/carica.js` e `public/invio.js` (vista «Carica foto» e invio), `public/dashboard.js`, `public/mappa.js` e `public/categorie.js` (vista admin).
 
 ## Ruoli
 

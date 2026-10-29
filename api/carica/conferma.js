@@ -6,7 +6,7 @@
 const { protetto } = require('../_lib/auth');
 const { ErroApi, variabile, leggiScheda, aggiungiRighe } = require('../_lib/sheets');
 const drive = require('../_lib/drive');
-const { etichetteAttive } = require('../_lib/etichette');
+const { ALTRO, etichetteAttive, stessoNome } = require('../_lib/etichette');
 const CaiExif = require('../../public/exif.js');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -108,15 +108,20 @@ module.exports = async (req, res) => {
     // 1. Etichette (devono essere tra quelle attive) e controllo dei file su Drive, con errori per singola foto.
     const errori = [];
     const verificate = [];
-    const scelte = corpo.foto.some((f) => f.etichetta) ? await etichetteAttive() : [];
+    const scelte = corpo.foto.some((f) => f.etichetta) ? (await etichetteAttive()).concat([ALTRO]) : [];
     await conLimite(corpo.foto, 4, async (f) => {
-      const etichetta = f.etichetta ? scelte.find((e) => e.toLowerCase() === f.etichetta.trim().toLowerCase()) : '';
+      const etichetta = f.etichetta ? scelte.find((e) => stessoNome(e, f.etichetta)) : '';
       if (f.etichetta && !etichetta) {
         errori.push({ idFoto: f.idFoto, errore: 'etichetta_non_valida' });
         return;
       }
+      const nota = pulisciNota(f.nota);
+      if (etichetta === ALTRO && !nota) {
+        errori.push({ idFoto: f.idFoto, errore: 'nota_obbligatoria' }); // «Altro» senza spiegazione non si registra
+        return;
+      }
       try {
-        verificate.push({ foto: f, etichetta: etichetta, nota: pulisciNota(f.nota), ...(await verificaFile(f, corpo.idInvio, utente.email)) });
+        verificate.push({ foto: f, etichetta: etichetta, nota: nota, ...(await verificaFile(f, corpo.idInvio, utente.email)) });
       } catch (errore) {
         if (!(errore instanceof ErroApi)) throw errore;
         errori.push({ idFoto: f.idFoto, errore: errore.codice });

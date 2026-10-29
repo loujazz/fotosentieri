@@ -155,6 +155,7 @@
     var dataModificata = false;
     var esitoInvio = null; // { inviate, nonInviate } dell'ultimo tentativo
     var etichette = []; // tipi di problema tra cui scegliere (dal foglio)
+    var nomeAltro = ''; // la voce «Altro»: richiede una nota che spieghi il problema
     var etichetteCaricate = false;
     var etichetteNonDisponibili = false;
 
@@ -225,16 +226,28 @@
         c.appendChild(e);
       }
       var n = el('label', 'campo-descrizione');
-      n.appendChild(el('span', null, 'Nota (facoltativa)'));
+      var titoloNota = el('span');
+      n.appendChild(titoloNota);
       var campoNota = document.createElement('input');
       campoNota.type = 'text';
       campoNota.maxLength = 300;
-      campoNota.placeholder = 'Per esempio: albero caduto dopo il ponte';
       campoNota.value = voce.nota;
       campoNota.disabled = inviando;
+      // Con «Altro» la nota è obbligatoria: il testo cambia subito, senza ridisegnare l'elenco.
+      var aggiornaNota = function () {
+        var obbligatoria = Boolean(nomeAltro) && voce.etichetta === nomeAltro;
+        titoloNota.textContent = obbligatoria ? 'Spiega di che problema si tratta (obbligatorio)' : 'Nota (facoltativa)';
+        campoNota.placeholder = obbligatoria ? 'Descrivi il problema in poche parole' : 'Per esempio: albero caduto dopo il ponte';
+        campoNota.required = obbligatoria;
+      };
+      aggiornaNota();
       campoNota.addEventListener('input', function () { voce.nota = campoNota.value; });
       n.appendChild(campoNota);
       c.appendChild(n);
+      if (etichette.length) {
+        var sceltaFatta = c.querySelector('select');
+        sceltaFatta.addEventListener('change', aggiornaNota);
+      }
       return c;
     }
 
@@ -243,6 +256,7 @@
       return window.CaiApi.chiedi('/api/etichette').then(function (r) {
         if (r.stato === 200 && r.corpo && Array.isArray(r.corpo.etichette)) {
           etichette = r.corpo.etichette;
+          nomeAltro = r.corpo.altro || '';
           etichetteCaricate = true;
           etichetteNonDisponibili = false;
         } else {
@@ -422,6 +436,23 @@
       if (inviando || inCorso) return;
       var voci = daInviare();
       if (!voci.length) return;
+      // «Altro» senza nota: si ferma prima di inviare e si indicano le foto da completare.
+      var senzaNota = voci.filter(function (v) { return nomeAltro && v.etichetta === nomeAltro && !v.nota.trim(); });
+      if (senzaNota.length) {
+        voci.forEach(function (v) { if (v.codiceErrore === 'nota_obbligatoria') { v.errore = null; v.codiceErrore = null; } });
+        senzaNota.forEach(function (v) {
+          v.errore = CaiInvio.messaggio('nota_obbligatoria');
+          v.codiceErrore = 'nota_obbligatoria';
+        });
+        esitoInvio = null;
+        ridisegna();
+        avanzamento.className = 'stato-lettura errore-testo';
+        avanzamento.textContent = senzaNota.length === 1
+          ? 'Manca la spiegazione per 1 foto con «' + nomeAltro + '». Scrivila nella nota e premi di nuovo «Invia».'
+          : 'Manca la spiegazione per ' + senzaNota.length + ' foto con «' + nomeAltro + '». Scrivila nelle note e premi di nuovo «Invia».';
+        return;
+      }
+      voci.forEach(function (v) { if (v.codiceErrore === 'nota_obbligatoria') { v.errore = null; v.codiceErrore = null; } });
       if (!idInvio) idInvio = nuovoUuid();
       inviando = true;
       esitoInvio = null;

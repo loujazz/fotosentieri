@@ -26,6 +26,7 @@
     ruolo_non_ammesso: 'Il tuo account non può inviare foto.',
     non_abilitato: 'Il tuo account non è abilitato.',
     etichetta_non_valida: 'Il tipo di problema scelto non è più disponibile. Sceglilo di nuovo e riprova.',
+    nota_obbligatoria: 'Con «Altro» scrivi nella nota di che problema si tratta.',
     caricata_non_registrata: 'La foto è su Drive ma non è ancora registrata. Premi «Invia» per riprovare.',
     generico: 'Il servizio ha avuto un problema. Riprova tra poco; se continua, avvisa un amministratore.',
   };
