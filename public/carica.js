@@ -145,6 +145,18 @@
     }
   }
 
+  // Da cellulare e tablet il browser toglie la posizione dalle foto: la pagina avvisa e invita a usare un computer.
+  function dispositivoMobile() {
+    try {
+      var ua = navigator.userAgent || '';
+      if (navigator.userAgentData && navigator.userAgentData.mobile) return true;
+      if (/Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(ua)) return true;
+      return /Macintosh/.test(ua) && navigator.maxTouchPoints > 1; // iPad che si presenta come computer
+    } catch (errore) {
+      return false;
+    }
+  }
+
   function avvia(contenitore) {
     var elenco = []; // { chiave, nome, file, esito, anteprima }
     var ignorati = [];
@@ -260,6 +272,31 @@
     var avanzamento = el('p', 'stato-lettura');
     avanzamento.setAttribute('aria-live', 'polite');
     [etichettaTutte, dove, etichettaData, aiutoData, pulsanteInvia, avanzamento].forEach(function (n) { pannelloInvio.appendChild(n); });
+
+    // Avviso per chi apre la pagina da cellulare o tablet: la scelta delle foto resta nascosta finché non conferma.
+    var avvisoCellulare = el('div', 'avviso-cellulare');
+    avvisoCellulare.setAttribute('role', 'alert');
+    avvisoCellulare.appendChild(el('h3', null, '📵 Carica le foto da un computer'));
+    avvisoCellulare.appendChild(el('p', null, 'Da cellulare o tablet questo sito non riesce a leggere la posizione delle foto, e una segnalazione senza posizione non si può mettere sulla mappa.'));
+    avvisoCellulare.appendChild(el('p', null, 'Scatta con il telefono, poi a casa scarica le foto da Google Foto sul computer e caricale da lì. Qui sotto trovi la guida.'));
+    var linkGuida = el('a', 'pulsante-link', 'Apri la guida');
+    linkGuida.href = 'guida.html';
+    linkGuida.target = '_blank';
+    linkGuida.rel = 'noopener';
+    avvisoCellulare.appendChild(linkGuida);
+    var comunque = el('button', 'secondario piccolo', 'Ho capito, carico lo stesso (le foto non avranno la posizione)');
+    comunque.type = 'button';
+    avvisoCellulare.appendChild(comunque);
+    var mobile = dispositivoMobile();
+    avvisoCellulare.hidden = !mobile;
+    scelta.hidden = mobile;
+    aiuto.hidden = mobile;
+    comunque.addEventListener('click', function () {
+      avvisoCellulare.hidden = true;
+      scelta.hidden = false;
+      aiuto.hidden = false;
+    });
+    contenitore.insertBefore(avvisoCellulare, contenitore.firstChild);
 
     [scelta, aiuto, stato, riepilogo, barraSel, lista, pannelloInvio, dettagliIgnorati, svuota].forEach(function (n) { contenitore.appendChild(n); });
 

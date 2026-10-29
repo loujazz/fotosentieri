@@ -202,3 +202,22 @@ body.mappa-a-tutto-schermo { overflow: hidden; }
 .riga-utente { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 .riga-utente.disattivata { opacity: .65; }
 .riga-utente .chi { flex: 1 1 260px; }
+
+/* Avviso per chi carica da cellulare o tablet */
+.avviso-cellulare { background: #fff4e5; border: 3px solid #e08a00; border-radius: 12px; padding: 14px 16px; margin: 8px 0 16px; }
+.avviso-cellulare h3 { margin: 0 0 8px; }
+.avviso-cellulare p { margin: 6px 0; }
+.avviso-cellulare .pulsante-link, .avviso-cellulare button { display: inline-block; margin: 8px 8px 0 0; }
+a.pulsante-link { background: var(--verde); color: #fff; padding: 12px 18px; border-radius: 10px; text-decoration: none; font-weight: 700; }
+
+/* Giro guidato */
+.aiuto-volontario { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin: 0 0 12px; }
+.aiuto-volontario a { font-weight: 600; }
+.giro-sfondo { position: fixed; inset: 0; z-index: 40; background: transparent; }
+.giro-sfondo.giro-scuro { background: rgba(0,0,0,.55); }
+.giro-evidenza { position: fixed; z-index: 41; border: 4px solid #ffb300; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); pointer-events: none; display: none; }
+.giro-scheda { position: fixed; z-index: 42; width: min(440px, calc(100vw - 24px)); background: #fff; border-radius: 14px; padding: 16px 18px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.giro-scheda h3 { margin: 4px 0 8px; }
+.giro-scheda p { margin: 0 0 12px; }
+.giro-contatore { font-size: .85rem; color: var(--grigio); }
+.giro-azioni { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
