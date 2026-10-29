@@ -108,7 +108,7 @@
         testoAvanzamento.textContent = stato.descrizione + (a.totale ? ': ' + a.fatti + ' di ' + a.totale : '…');
       }
       errore.className = 'stato-lettura' + (stato.errore ? ' errore-testo' : '');
-      errore.textContent = messaggioErrore(stato.errore) || (stato.saltati ? 'Attenzione: ' + stato.saltati + ' elementi non si sono potuti scaricare e restano come prima.' : '');
+      errore.textContent = messaggioErrore(stato.errore) || (stato.saltati ? 'Attenzione: ' + stato.saltati + (stato.saltati === 1 ? ' elemento non si è potuto' : ' elementi non si sono potuti') + ' scaricare o salvare e restano come prima' + (stato.saltatiElenco && stato.saltatiElenco.length ? ' (' + stato.saltatiElenco.join(', ') + ')' : '') + '.' : '');
       pulsanteAggiorna.disabled = inEsecuzione;
       pulsanteAggiorna.textContent = inEsecuzione ? 'Aggiornamento in corso…' : (stato.inCorso ? 'Riprendi l\'aggiornamento' : 'Aggiorna ora');
     }

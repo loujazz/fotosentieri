@@ -133,7 +133,9 @@ async function aggiungiRighe(nomeScheda, oggetti) {
         throw new ErroApi(500, 'errore_foglio', `Nella scheda "${nomeScheda}" manca la colonna "${chiave}"`);
       }
     });
-    const valori = oggetti.map((o) => intestazioni.map((h) => (o[h] === undefined || o[h] === null ? '' : o[h])));
+    // Una cella accetta solo testo o numeri: qualsiasi altra cosa (oggetti, elenchi, vero/falso) si scrive come testo.
+    const cella = (x) => (x === undefined || x === null ? '' : (typeof x === 'string' || typeof x === 'number' ? x : (typeof x === 'object' ? JSON.stringify(x) : String(x))));
+    const valori = oggetti.map((o) => intestazioni.map((h) => cella(o[h])));
     await client.request({
       url: `${base}${encodeURIComponent(`${nomeScheda}!A1`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       method: 'POST',
@@ -142,7 +144,8 @@ async function aggiungiRighe(nomeScheda, oggetti) {
   } catch (errore) {
     if (errore instanceof ErroApi) throw errore;
     const stato = errore.response && errore.response.status;
-    console.error(`Scrittura nella scheda "${nomeScheda}" non riuscita (HTTP ${stato || '?'}):`, errore.message);
+    const dettaglio = errore.response && errore.response.data && errore.response.data.error && errore.response.data.error.message;
+    console.error(`Scrittura nella scheda "${nomeScheda}" non riuscita (HTTP ${stato || '?'}):`, dettaglio || errore.message);
     throw new ErroApi(500, 'errore_foglio', `Impossibile scrivere nella scheda "${nomeScheda}"`);
   }
 }
