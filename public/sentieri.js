@@ -69,7 +69,25 @@
     var messaggioSettori = el('p', 'stato-lettura');
     messaggioSettori.setAttribute('aria-live', 'polite');
     var listaSettori = el('div', 'lista-settori');
-    [titoloSync, rigaStato, avanzamento, errore, pulsanteAggiorna, notaSync, titoloSettori, notaSettori, messaggioSettori, listaSettori]
+    var titoloComuni = el('h3', null, 'Sentieri per comune');
+    var notaComuni = el('p', 'nota', 'Scegli un comune per vedere i sentieri che lo attraversano, come indicato dal CAI. Un sentiero che passa per più comuni compare in ciascuno. Si vedono solo i settori attivi.');
+    var messaggioComuni = el('p', 'stato-lettura');
+    messaggioComuni.setAttribute('aria-live', 'polite');
+    var etichettaComune = el('label', 'campo-data');
+    etichettaComune.appendChild(el('span', null, 'Comune'));
+    var sceltaComune = document.createElement('select');
+    etichettaComune.appendChild(sceltaComune);
+    var etichettaCerca = el('label', 'campo-data');
+    etichettaCerca.appendChild(el('span', null, 'Cerca per numero o nome (facoltativo)'));
+    var cercaComune = document.createElement('input');
+    cercaComune.type = 'search';
+    cercaComune.autocomplete = 'off';
+    etichettaCerca.appendChild(cercaComune);
+    var elencoComune = el('div', 'lista-sentieri');
+    var menu = null;
+    var comuneScelto = '';
+    [titoloSync, rigaStato, avanzamento, errore, pulsanteAggiorna, notaSync, titoloSettori, notaSettori, messaggioSettori, listaSettori,
+      titoloComuni, notaComuni, messaggioComuni, etichettaComune, etichettaCerca, elencoComune]
       .forEach(function (n) { contenitore.appendChild(n); });
 
     function messaggioErrore(e) {
@@ -90,7 +108,7 @@
         testoAvanzamento.textContent = stato.descrizione + (a.totale ? ': ' + a.fatti + ' di ' + a.totale : '…');
       }
       errore.className = 'stato-lettura' + (stato.errore ? ' errore-testo' : '');
-      errore.textContent = messaggioErrore(stato.errore) || (stato.saltati ? 'Attenzione: ' + stato.saltati + ' elementi non si sono potuti scaricare e restano come prima.' : '');
+      errore.textContent = messaggioErrore(stato.errore) || (stato.saltati ? 'Attenzione: ' + stato.saltati + (stato.saltati === 1 ? ' elemento non si è potuto' : ' elementi non si sono potuti') + ' scaricare o salvare e restano come prima' + (stato.saltatiElenco && stato.saltatiElenco.length ? ' (' + stato.saltatiElenco.join(', ') + ')' : '') + '.' : '');
       pulsanteAggiorna.disabled = inEsecuzione;
       pulsanteAggiorna.textContent = inEsecuzione ? 'Aggiornamento in corso…' : (stato.inCorso ? 'Riprendi l\'aggiornamento' : 'Aggiorna ora');
     }
@@ -127,8 +145,60 @@
       }
       inEsecuzione = false;
       disegnaStato();
-      if (stato && !stato.inCorso) caricaSettori();
+      if (stato && !stato.inCorso) { caricaSettori(); caricaComuni(); }
     }
+
+    // ---- sentieri per comune ----
+    function disegnaComuni() {
+      sceltaComune.textContent = '';
+      elencoComune.textContent = '';
+      var conta = {};
+      ((menu && menu.percorsi) || []).forEach(function (p) { p.comuni.forEach(function (c) { conta[c] = (conta[c] || 0) + 1; }); });
+      var nomi = (menu && menu.comuni) || [];
+      etichettaComune.hidden = etichettaCerca.hidden = nomi.length === 0;
+      if (nomi.length === 0) {
+        elencoComune.appendChild(el('p', 'messaggio', 'Nessun sentiero: fai prima «Aggiorna ora» e attiva i settori della sezione.'));
+        return;
+      }
+      sceltaComune.appendChild(new Option('Scegli un comune…', ''));
+      nomi.forEach(function (c) { sceltaComune.appendChild(new Option(c + ' (' + conta[c] + ')', c)); });
+      sceltaComune.value = nomi.indexOf(comuneScelto) !== -1 ? comuneScelto : '';
+      comuneScelto = sceltaComune.value;
+      if (!comuneScelto) return;
+      var trovati = window.CaiMenu.filtra(menu, { comune: comuneScelto, testo: cercaComune.value });
+      elencoComune.appendChild(el('p', 'nota', trovati.length === 1 ? '1 sentiero.' : trovati.length + ' sentieri.'));
+      var nomeDi = {};
+      menu.settori.forEach(function (x) { nomeDi[x.id] = window.CaiMenu.nomeSettore(x); });
+      trovati.forEach(function (p) {
+        var r = el('div', 'sentiero');
+        r.appendChild(el('strong', null, window.CaiMenu.testoSentiero(p)));
+        var altri = p.comuni.filter(function (c) { return c !== comuneScelto; });
+        var dettagli = ['Settore: ' + p.settori.map(function (id) { return nomeDi[id] || id; }).join(', ')];
+        if (altri.length) dettagli.push('Passa anche per: ' + altri.join(', '));
+        r.appendChild(el('div', 'nota', dettagli.join(' · ')));
+        elencoComune.appendChild(r);
+      });
+    }
+
+    async function caricaComuni() {
+      try {
+        var r = await window.CaiApi.chiedi('/api/sentieri');
+        if (r.stato === 200 && r.corpo && Array.isArray(r.corpo.percorsi)) {
+          menu = r.corpo;
+          messaggioComuni.textContent = '';
+        } else {
+          messaggioComuni.className = 'stato-lettura errore-testo';
+          messaggioComuni.textContent = MESSAGGI_API[r.corpo && r.corpo.errore] || MESSAGGI_API.generico;
+        }
+      } catch (e) {
+        messaggioComuni.className = 'stato-lettura errore-testo';
+        messaggioComuni.textContent = MESSAGGI_API.rete;
+      }
+      disegnaComuni();
+    }
+
+    sceltaComune.addEventListener('change', function () { comuneScelto = sceltaComune.value; disegnaComuni(); });
+    cercaComune.addEventListener('input', disegnaComuni);
 
     // ---- settori ----
     function riga(s) {
@@ -193,6 +263,7 @@
         if (r.stato === 200 && r.corpo) {
           impostazioni = r.corpo;
           disegnaSettori();
+          caricaComuni(); // attivare o spegnere un settore cambia i sentieri visibili
           return;
         }
         esito.className = 'nota esito-salvataggio avviso-testo';
@@ -215,12 +286,18 @@
       }
       disegnaStato();
       await caricaSettori();
+      await caricaComuni();
     }
 
     function azzera() {
       annulla = true;
       stato = null;
       impostazioni = null;
+      menu = null;
+      comuneScelto = '';
+      cercaComune.value = '';
+      elencoComune.textContent = '';
+      messaggioComuni.textContent = '';
       listaSettori.textContent = '';
       errore.textContent = '';
       messaggioSettori.textContent = '';

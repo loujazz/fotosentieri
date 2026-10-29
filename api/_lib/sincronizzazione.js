@@ -29,6 +29,14 @@ const SALVATAGGIO_OGNI_MS = 8000;
 const GIRO_TROPPO_VECCHIO_MS = 3 * 24 * 3600 * 1000;
 const INTESTAZIONI_SETTORI = ['id_osm2cai', 'codice', 'nome', 'attivo', 'aggiornato_il'];
 
+// Un nome dal CAI può arrivare come testo o come oggetto per lingua ({ it: "..." }): nelle celle del foglio solo testo.
+function testoNome(valore) {
+  if (valore === null || valore === undefined) return '';
+  if (typeof valore === 'string') return valore.trim();
+  if (typeof valore === 'object') return testoNome(valore.it !== undefined ? valore.it : Object.values(valore)[0]);
+  return String(valore).trim();
+}
+
 function adesso() {
   return new Date().toISOString();
 }
@@ -103,6 +111,7 @@ function riassunto(stato) {
     ultimaRiuscita: stato.ultimaRiuscita,
     errore: stato.errore,
     saltati: (stato.saltati || []).length,
+    saltatiElenco: (stato.saltati || []).slice(0, 5),
     conteggi: stato.conteggi,
   };
 }
@@ -152,7 +161,7 @@ async function faseSettori(ctx) {
       const voce = stato.listaSettori.find((x) => x.id === id) || {};
       lavoro.settori[id] = {
         id, codice: String(p.full_code || (p.name && p.name.it) || voce.codice || id),
-        nome_cai: p.human_name || null, updated_at: voce.updated_at || p.updated_at || '',
+        nome_cai: testoNome(p.human_name), updated_at: voce.updated_at || p.updated_at || '',
         riquadro: geo.riquadro(semplici.flatMap((poligono) => poligono)), poligoni: semplici,
       };
     } catch (errore) {
@@ -241,7 +250,7 @@ async function nuoviSettoriNelFoglio(settori, prefisso) {
   const nuovi = settori.filter((s) => !esistenti.has(String(s.id)));
   // I settori nuovi partono attivi solo se il codice comincia con il prefisso della sezione; gli admin li correggono dal sito.
   await aggiungiRighe('settori', nuovi.map((s) => ({
-    id_osm2cai: s.id, codice: s.codice, nome: s.nome_cai || '',
+    id_osm2cai: s.id, codice: String(s.codice || ''), nome: testoNome(s.nome_cai),
     attivo: prefisso && s.codice.toUpperCase().startsWith(prefisso.toUpperCase()) ? 'SI' : 'NO', aggiornato_il: adesso(),
   })));
   return nuovi.length;
