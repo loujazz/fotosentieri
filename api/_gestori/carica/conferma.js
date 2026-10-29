@@ -4,7 +4,7 @@
 // posizione e data dal file stesso (non si fida del browser) e aggiunge le righe nelle schede
 // "invii" e "foto". Ripetibile senza duplicati. Risposta: { registrate: [idFoto], errori: [{ idFoto, errore }] }
 const { protetto } = require('../../_lib/auth');
-const { ErroApi, variabile, leggiScheda, aggiungiRighe } = require('../../_lib/sheets');
+const { ErroApi, variabile, leggiScheda, aggiungiRighe, assicuraColonna } = require('../../_lib/sheets');
 const drive = require('../../_lib/drive');
 const { ALTRO, etichetteAttive, stessoNome } = require('../../_lib/etichette');
 const { menuSentieri, nomeSettore, testoSentiero } = require('../../_lib/sentieri');
@@ -112,6 +112,8 @@ module.exports = async (req, res) => {
     // 0. Settore e sentiero (facoltativi): devono essere nel menu attuale; si scrivono nel foglio come testo leggibile.
     let testoSettore = '';
     let testoPercorso = '';
+    let idSettoreScelto = ''; // si salvano anche gli identificativi: l'elenco in tabella li usa per i filtri e per il comune
+    let idSentieroScelto = '';
     const idSettore = Number.isInteger(corpo.settore) ? corpo.settore : null;
     const idSentiero = Number.isInteger(corpo.sentiero) ? corpo.sentiero : null;
     if (idSettore !== null || idSentiero !== null) {
@@ -125,6 +127,8 @@ module.exports = async (req, res) => {
       if (percorso && settore && !percorso.settori.includes(settore.id)) throw new ErroApi(400, 'sentiero_non_valido');
       testoSettore = settore ? nomeSettore(settore) : '';
       testoPercorso = percorso ? testoSentiero(percorso) : '';
+      idSettoreScelto = settore ? settore.id : '';
+      idSentieroScelto = percorso ? percorso.id : '';
     }
 
     // 1. Etichette (devono essere tra quelle attive) e controllo dei file su Drive, con errori per singola foto.
@@ -160,6 +164,9 @@ module.exports = async (req, res) => {
     if (!invio && verificate.length > 0) {
       const date = verificate.map((v) => (v.esito.dataScatto || '').slice(0, 10)).filter(dataValida).sort();
       const dataSopralluogo = corpo.dataSopralluogo || date[0] || new Date().toISOString().slice(0, 10);
+      // Colonne in più nel foglio (si creano da sole alla prima volta): identificativi di settore e sentiero.
+      await assicuraColonna('invii', 'settore_id');
+      await assicuraColonna('invii', 'sentiero_id');
       await aggiungiRighe('invii', [{
         id_invio: corpo.idInvio,
         email_volontario: utente.email,
@@ -167,6 +174,8 @@ module.exports = async (req, res) => {
         data_sopralluogo: dataSopralluogo,
         settore: testoSettore,
         sentiero: testoPercorso,
+        settore_id: idSettoreScelto,
+        sentiero_id: idSentieroScelto,
         data_invio: new Date().toISOString(),
         num_foto: corpo.totaleFoto,
       }]);

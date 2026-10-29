@@ -2,15 +2,10 @@
 // Elenco delle foto di uno stato (le 200 più recenti) con autore e data del sopralluogo, più i conteggi per stato.
 const { RUOLI_ADMIN, protetto } = require('../../_lib/auth');
 const { ErroApi, leggiScheda } = require('../../_lib/sheets');
+const { costruisciFoto } = require('../../_lib/schedeFoto');
 
 const STATI = ['in_attesa', 'approvata', 'rifiutata'];
 const LIMITE = 200;
-
-function numero(valore) {
-  if (valore === '' || valore === undefined || valore === null) return null;
-  const n = Number(String(valore).replace(',', '.'));
-  return Number.isFinite(n) ? n : null;
-}
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -26,28 +21,7 @@ module.exports = async (req, res) => {
     const conteggi = { in_attesa: 0, approvata: 0, rifiutata: 0 };
     foto.forEach((f) => { if (STATI.includes(f.stato)) conteggi[f.stato]++; });
 
-    const scelte = foto.filter((f) => f.stato === richiesto).map((f) => {
-      const invio = perInvio.get(f.id_invio) || {};
-      return {
-        idFoto: f.id_foto,
-        nomeFile: f.nome_file,
-        lat: numero(f.latitudine),
-        lon: numero(f.longitudine),
-        fontePosizione: f.fonte_posizione,
-        dataScatto: f.data_scatto,
-        stato: f.stato,
-        rivistaDa: f.rivista_da,
-        rivistaIl: f.rivista_il,
-        motivoRifiuto: f.motivo_rifiuto,
-        volontario: { nome: invio.nome_volontario || '', email: invio.email_volontario || '' },
-        etichetta: f.etichetta || '',
-        nota: f.nota || '',
-        settore: invio.settore || '',
-        sentiero: invio.sentiero || '',
-        dataSopralluogo: invio.data_sopralluogo || '',
-        dataInvio: invio.data_invio || '',
-      };
-    });
+    const scelte = foto.filter((f) => f.stato === richiesto).map((f) => costruisciFoto(f, perInvio.get(f.id_invio)));
     scelte.sort((a, b) => (b.dataInvio || '').localeCompare(a.dataInvio || '') || (b.dataScatto || '').localeCompare(a.dataScatto || ''));
 
     risposta.status(200).json({ stato: richiesto, conteggi: conteggi, totale: scelte.length, limite: LIMITE, foto: scelte.slice(0, LIMITE) });

@@ -74,6 +74,8 @@
     var generazione = 0; // cambia a ogni ridisegno: le miniature in ritardo di un elenco vecchio si scartano
     var modaleAperta = null;
     var osservatore = null;
+    var esterne = {}; // foto aperte dall'elenco in tabella (idFoto -> foto): le azioni le trovano anche se non sono nelle schede
+    var dopoEsterno = null; // da richiamare quando un'azione fatta dall'elenco in tabella cambia i dati
 
     contenitore.textContent = '';
     var schede = el('div', 'schede-stato');
@@ -87,6 +89,14 @@
     avviso.setAttribute('aria-live', 'polite');
     var griglia = el('div', 'griglia-foto');
     [schede, filtro, barra, avviso, griglia].forEach(function (n) { contenitore.appendChild(n); });
+
+    // Le foto con questi id: dalle schede già caricate oppure dall'elenco in tabella.
+    function fotoDa(ids) {
+      return ids.map(function (id) {
+        var trovata = ultimo ? ultimo.foto.filter(function (x) { return x.idFoto === id; })[0] : null;
+        return trovata || esterne[id];
+      }).filter(Boolean);
+    }
 
     // ---- finestre di dialogo ----
     function chiudiModale() {
@@ -296,6 +306,10 @@
         disegna();
         avviso.className = 'stato-lettura';
         avviso.textContent = '✅ Posizione salvata per ' + f.nomeFile + '.';
+        if (dopoEsterno) {
+          mostraEsito('Fatto', [{ testo: '✅ Posizione salvata per ' + f.nomeFile + '.' }]);
+          dopoEsterno();
+        }
       }
     }
 
@@ -322,9 +336,58 @@
       });
     }
 
+    // ---- scheda di una foto aperta dall'elenco in tabella ----
+    // Mostra la foto e i dati e offre le stesse azioni delle schede; "dopo" si richiama quando un'azione cambia qualcosa.
+    function apriScheda(f, dopo) {
+      esterne[f.idFoto] = f;
+      dopoEsterno = dopo || null;
+      var c = el('div');
+      c.appendChild(el('h3', 'nome-foto', f.nomeFile));
+      var area = el('div', 'foto-grande', 'Sto caricando la foto…');
+      c.appendChild(area);
+      c.appendChild(el('div', null, '👤 ' + (f.volontario.nome || f.volontario.email || 'autore sconosciuto')));
+      aggiungiDescrizione(c, f);
+      if (f.comuni && f.comuni.length) c.appendChild(el('div', null, '🏘️ Comune: ' + f.comuni.join(', ')));
+      if (f.dataSopralluogo) c.appendChild(el('div', 'nota', 'Sopralluogo del ' + soloData(f.dataSopralluogo)));
+      if (f.dataScatto) c.appendChild(el('div', 'nota', 'Scattata il ' + dataOra(f.dataScatto)));
+      if (f.dataInvio) c.appendChild(el('div', 'nota', 'Inviata il ' + dataOra(f.dataInvio)));
+      c.appendChild(el('p', 'nota', senzaPosizione(f) ? '⚠️ Senza posizione' : '📍 ' + f.lat.toFixed(6) + ', ' + f.lon.toFixed(6) + (f.fontePosizione === 'correzione_admin' ? ' (indicata da un amministratore)' : '')));
+      var nomeStato = { in_attesa: '⏳ Da approvare', approvata: '✅ Approvata', rifiutata: '❌ Rifiutata' }[f.stato] || f.stato;
+      c.appendChild(el('div', null, nomeStato));
+      if (f.stato !== 'in_attesa') {
+        c.appendChild(el('div', 'nota', (f.stato === 'approvata' ? 'Approvata' : 'Rifiutata') + ' da ' + (f.rivistaDa || '?') + (f.rivistaIl ? ' il ' + dataOra(f.rivistaIl) : '')));
+        if (f.motivoRifiuto) c.appendChild(el('div', 'nota', 'Motivo: ' + f.motivoRifiuto));
+      }
+      var azioni = el('div', 'azioni-modale');
+      if (f.stato === 'in_attesa') {
+        azioni.appendChild(pulsante('Approva', '', function () { revisiona('approva', [f.idFoto]); }));
+        azioni.appendChild(pulsante('Rifiuta', 'pericolo', function () { revisiona('rifiuta', [f.idFoto]); }));
+      } else {
+        azioni.appendChild(pulsante('Rimetti in attesa', 'secondario', function () { revisiona('annulla', [f.idFoto]); }));
+      }
+      if (senzaPosizione(f) || f.fontePosizione === 'correzione_admin') {
+        azioni.appendChild(pulsante(senzaPosizione(f) ? 'Indica la posizione' : 'Cambia la posizione', 'secondario', function () { apriPosizione(f); }));
+      }
+      if (puoEliminare) azioni.appendChild(pulsante('Elimina per sempre', 'pericolo', function () { eliminaFoto([f.idFoto]); }));
+      azioni.appendChild(pulsante('Chiudi', 'secondario', chiudiModale));
+      c.appendChild(azioni);
+      apriModale(c, { larga: true });
+      window.CaiApi.blob('/api/admin/anteprima?id=' + encodeURIComponent(f.idFoto) + '&misura=grande').then(function (blob) {
+        var indirizzo = URL.createObjectURL(blob);
+        var img = el('img', 'foto-grande-img');
+        img.alt = f.nomeFile;
+        img.onload = function () { URL.revokeObjectURL(indirizzo); };
+        img.src = indirizzo;
+        area.textContent = '';
+        area.appendChild(img);
+      }).catch(function () {
+        area.textContent = 'Anteprima non disponibile per questa foto.';
+      });
+    }
+
     // ---- azioni ----
     async function revisiona(azione, ids) {
-      var f = ultimo.foto.filter(function (x) { return ids.indexOf(x.idFoto) !== -1; });
+      var f = fotoDa(ids);
       var senza = f.filter(senzaPosizione).length;
       var approva = azione === 'approva';
       var annulla = azione === 'annulla';
@@ -357,17 +420,18 @@
       var cattive = r.corpo.risultati.filter(function (x) { return !x.ok; });
       buone.forEach(function (x) { delete selezione[x.idFoto]; });
       var nomi = {};
-      ultimo.foto.forEach(function (x) { nomi[x.idFoto] = x.nomeFile; });
+      fotoDa(ids).forEach(function (x) { nomi[x.idFoto] = x.nomeFile; });
       var righe = [];
       if (buone.length) righe.push({ testo: '✅ ' + buone.length + (annulla ? (buone.length === 1 ? ' foto rimessa in attesa.' : ' foto rimesse in attesa.') : approva ? (buone.length === 1 ? ' foto approvata.' : ' foto approvate.') : (buone.length === 1 ? ' foto rifiutata.' : ' foto rifiutate.')) });
       cattive.forEach(function (x) { righe.push({ avviso: true, testo: '⚠️ ' + (nomi[x.idFoto] || 'Foto') + ': ' + messaggio(x.errore) }); });
       mostraEsito(cattive.length ? 'Fatto, con qualche problema' : 'Fatto', righe);
       carica();
+      if (dopoEsterno) dopoEsterno(); // l'elenco in tabella si aggiorna
     }
 
     // ---- eliminazione definitiva (solo super amministratore) ----
     function eliminaFoto(ids) {
-      var f = ultimo.foto.filter(function (x) { return ids.indexOf(x.idFoto) !== -1; });
+      var f = fotoDa(ids);
       var quante = ids.length === 1 ? '1 foto' : ids.length + ' foto';
       var c = el('div');
       c.appendChild(el('h3', null, 'Eliminare per sempre ' + quante + '?'));
@@ -399,7 +463,7 @@
       avviso.className = 'stato-lettura';
       avviso.textContent = 'Sto eliminando… non chiudere la pagina.';
       var nomi = {};
-      ultimo.foto.forEach(function (x) { nomi[x.idFoto] = x.nomeFile; });
+      fotoDa(ids).forEach(function (x) { nomi[x.idFoto] = x.nomeFile; });
       var r;
       try {
         r = await window.CaiApi.chiedi('/api/admin/elimina', { method: 'POST', body: { foto: ids } });
@@ -422,6 +486,7 @@
       cattive.forEach(function (x) { righe.push({ avviso: true, testo: '⚠️ ' + (nomi[x.idFoto] || 'Foto') + ': ' + messaggio(x.errore) }); });
       mostraEsito(cattive.length ? 'Fatto, con qualche problema' : 'Fatto', righe);
       carica();
+      if (dopoEsterno) dopoEsterno(); // l'elenco in tabella si aggiorna
     }
 
     // ---- disegno ----
@@ -617,7 +682,7 @@
     }
 
     disegnaSchede();
-    return { ricarica: carica, azzera: azzera };
+    return { ricarica: function () { dopoEsterno = null; return carica(); }, azzera: azzera, apriScheda: apriScheda };
   }
 
   window.Dashboard = { avvia: avvia };

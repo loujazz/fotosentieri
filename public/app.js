@@ -9,6 +9,7 @@
   var pannello = null; // controllo della dashboard degli amministratori
   var mappa = null; // controllo della mappa (amministratori)
   var categorie = null; // controllo della pagina delle categorie (amministratori)
+  var elenco = null; // elenco in tabella delle foto (amministratori)
   var utenti = null; // utenti e ruoli (solo super amministratore)
   var invii = null; // elenco dei propri invii (volontari)
   var sentieri = null; // controllo della pagina dei sentieri e della sincronizzazione (amministratori)
@@ -124,6 +125,7 @@
   // Sezioni della vista admin: "foto" (dashboard) e "mappa". Ogni volta si ricarica l'elenco.
   function mostraSezioneAdmin(nome) {
     $('sezione-foto').hidden = nome !== 'foto';
+    $('sezione-elenco').hidden = nome !== 'elenco';
     $('sezione-mappa').hidden = nome !== 'mappa';
     $('sezione-categorie').hidden = nome !== 'categorie';
     $('sezione-sentieri').hidden = nome !== 'sentieri';
@@ -131,6 +133,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('#admin-navigazione button'), function (b) {
       b.classList.toggle('attiva', b.getAttribute('data-sezione') === nome);
     });
+    if (nome === 'elenco') return elenco.mostra();
     if (nome === 'mappa') return mappa.mostra();
     if (nome === 'categorie') return categorie.mostra();
     if (nome === 'sentieri') return sentieri.mostra();
@@ -175,6 +178,7 @@
       if (r.corpo.ruolo === 'admin' || r.corpo.ruolo === 'super_admin') {
         $('admin-ruolo').textContent = r.corpo.ruolo === 'super_admin' ? 'super amministratore' : 'amministratore';
         pannello = window.Dashboard.avvia($('dashboard-contenuto'), { puoEliminare: r.corpo.ruolo === 'super_admin' });
+        elenco = window.Elenco.avvia($('elenco-contenuto'), { apriScheda: pannello.apriScheda });
         if (!mappa) mappa = window.Mappa.avvia($('mappa-contenuto'));
         if (!categorie) categorie = window.Categorie.avvia($('categorie-contenuto'));
         if (!sentieri) sentieri = window.Sentieri.avvia($('sentieri-contenuto'));
@@ -215,6 +219,7 @@
     if (window.CaiGiro) window.CaiGiro.chiudi();
     if (caricamento) caricamento.azzera();
     if (pannello) pannello.azzera();
+    if (elenco) elenco.azzera();
     if (mappa) mappa.azzera();
     if (categorie) categorie.azzera();
     if (sentieri) sentieri.azzera();

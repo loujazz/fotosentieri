@@ -221,3 +221,25 @@ a.pulsante-link { background: var(--verde); color: #fff; padding: 12px 18px; bor
 .giro-scheda p { margin: 0 0 12px; }
 .giro-contatore { font-size: .85rem; color: var(--grigio); }
 .giro-azioni { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+/* Elenco in tabella delle foto */
+.filtri-elenco { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 14px; align-items: end; background: #fff; border-radius: 12px; padding: 12px 14px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.filtri-elenco .campo-data { margin-bottom: 0; }
+.filtri-elenco select, .filtri-elenco input[type=date] { display: block; width: 100%; font: inherit; font-weight: 400; padding: 8px 10px; margin-top: 4px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; box-sizing: border-box; }
+.filtro-date { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 8px; grid-column: span 2; }
+.tabella-scorrevole { overflow-x: auto; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+table.tabella-foto { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.tabella-foto th, .tabella-foto td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bordo); vertical-align: top; }
+.tabella-foto td { white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.tabella-foto th { position: sticky; top: 0; background: #f0ede2; white-space: nowrap; }
+.tabella-foto button.intestazione { background: none; border: 0; padding: 0; color: var(--verde); font: inherit; font-weight: 700; cursor: pointer; }
+.tabella-foto tr.riga-foto { cursor: pointer; }
+.tabella-foto tr.riga-foto:hover, .tabella-foto tr.riga-foto:focus { background: #f3f8f4; outline: none; }
+.tabella-foto tr.riga-foto:focus { box-shadow: inset 3px 0 0 var(--verde); }
+.pie-elenco { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 12px 0; }
+.pie-elenco .per-pagina { margin: 0; }
+.pie-elenco .per-pagina select { display: inline-block; width: auto; font: inherit; padding: 6px 8px; margin-left: 6px; border: 2px solid var(--bordo); border-radius: 8px; }
+.pie-elenco .per-pagina span { display: inline; }
+/* L'elenco in tabella ha molte colonne: si allarga oltre la colonna centrale del sito */
+#sezione-elenco { position: relative; left: 50%; transform: translateX(-50%); width: min(1600px, 96vw); }
+.filtro-date { grid-template-columns: 1.7fr 1fr 1fr; }
