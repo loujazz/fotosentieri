@@ -131,3 +131,20 @@ button.miniatura:hover { background: #dfe3da; }
 .scheda-mappa button.miniatura { height: 150px; margin-bottom: 8px; }
 .scheda-mappa .nome-foto { margin-bottom: 4px; }
 .leaflet-container { font: inherit; }
+
+/* Tipo di problema e nota del volontario */
+.descrizione-foto { display: grid; gap: 8px; margin: 10px 0 4px; }
+.campo-descrizione { display: block; font-weight: 600; font-size: .9rem; }
+.campo-descrizione select, .campo-descrizione input, .campo-data select { display: block; width: 100%; font: inherit; font-weight: 400; padding: 10px 12px; margin-top: 4px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; }
+.etichetta-foto { font-weight: 700; margin-top: 4px; }
+.nota-volontario { white-space: pre-wrap; word-break: break-word; background: #f3f1e8; border-radius: 8px; padding: 8px 10px; margin: 6px 0; font-size: .95rem; }
+
+/* Categorie dei problemi */
+.aggiunta-categoria { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 12px 0; }
+.aggiunta-categoria .campo-data { flex: 1 1 260px; margin-bottom: 0; }
+.aggiunta-categoria .campo-data input { width: 100%; font: inherit; padding: 12px; border: 2px solid var(--bordo); border-radius: 8px; }
+.lista-categorie { display: grid; gap: 10px; margin: 14px 0; }
+.categoria { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: #fff; border-radius: 12px; border-left: 10px solid #2f9e44; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.categoria.disattivata { border-left-color: #999; opacity: .75; }
+.azioni-categoria { display: flex; gap: 8px; }
+.azioni-categoria button { margin-top: 0; }

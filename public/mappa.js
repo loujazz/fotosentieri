@@ -27,6 +27,14 @@
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('it-IT') : '';
   }
 
+  // Tipo di problema, settore, sentiero e nota scritti dal volontario (i campi vuoti non si mostrano).
+  function aggiungiDescrizione(contenitore, f) {
+    if (f.etichetta) contenitore.appendChild(el('div', 'etichetta-foto', '🏷️ ' + f.etichetta));
+    var dove = [f.settore ? 'Settore ' + f.settore : '', f.sentiero ? 'Sentiero ' + f.sentiero : ''].filter(Boolean).join(' · ');
+    if (dove) contenitore.appendChild(el('div', null, '🥾 ' + dove));
+    if (f.nota) contenitore.appendChild(el('div', 'nota-volontario', '💬 ' + f.nota));
+  }
+
   function avvia(contenitore) {
     var mappa = null;
     var gruppo = null;
@@ -79,6 +87,7 @@
       finestra.appendChild(el('h3', 'nome-foto', f.nomeFile));
       var foto = el('div', 'foto-grande', 'Sto caricando la foto…');
       finestra.appendChild(foto);
+      aggiungiDescrizione(finestra, f);
       var chiudi = el('button', null, 'Chiudi');
       chiudi.type = 'button';
       chiudi.addEventListener('click', chiudiGrande);
@@ -112,6 +121,7 @@
       c.appendChild(m);
       c.appendChild(el('strong', 'nome-foto', f.nomeFile));
       if (f.volontario) c.appendChild(el('div', null, '👤 ' + f.volontario));
+      aggiungiDescrizione(c, f);
       if (f.dataSopralluogo) c.appendChild(el('div', 'nota', 'Sopralluogo del ' + soloData(f.dataSopralluogo)));
       if (f.dataScatto) c.appendChild(el('div', 'nota', 'Scattata il ' + dataOra(f.dataScatto)));
       var p = el('div', 'nota');
