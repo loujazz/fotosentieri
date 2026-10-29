@@ -15,6 +15,7 @@ const percorsi = {
   'admin/anteprima': require('./_gestori/admin/anteprima'),
   'admin/revisione': require('./_gestori/admin/revisione'),
   'admin/mappa': require('./_gestori/admin/mappa'),
+  'admin/tracciati': require('./_gestori/admin/tracciati'),
   'admin/categorie': require('./_gestori/admin/categorie'),
   'admin/settori': require('./_gestori/admin/settori'),
   'admin/sync': require('./_gestori/admin/sync'),

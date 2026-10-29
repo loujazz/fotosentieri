@@ -172,3 +172,9 @@ button.miniatura:hover { background: #dfe3da; }
 .barra-selezione .campo-data select, .barra-selezione .campo-data input { display: block; width: 100%; max-width: 520px; font: inherit; font-weight: 400; padding: 10px 12px; margin-top: 6px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; box-sizing: border-box; }
 .casella-foto { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 4px; cursor: pointer; }
 .casella-foto input { width: 22px; height: 22px; }
+
+/* Sentieri CAI sulla mappa */
+.barra-sentieri { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.barra-sentieri .campo-data { flex: 1 1 240px; margin-bottom: 0; }
+.barra-sentieri .campo-data select, .barra-sentieri .campo-data input { display: block; width: 100%; font: inherit; font-weight: 400; padding: 10px 12px; margin-top: 6px; border: 2px solid var(--bordo); border-radius: 8px; background: #fff; box-sizing: border-box; }
+.scheda-sentiero { min-width: 200px; }

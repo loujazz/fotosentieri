@@ -40,6 +40,11 @@
     var gruppo = null;
     var miniature = {}; // idFoto -> indirizzo dell'immagine (oggetto del browser)
     var sfondoGrande = null;
+    var controlloLivelli = null;
+    var livelloSentieri = null; // L.layerGroup con i tracciati dei sentieri CAI
+    var tracciati = {}; // idPercorso -> { dati (numero, nome, ...), linea (L.polyline) }
+    var menuSentieri = null;
+    var sentieriCaricati = false;
 
     contenitore.textContent = '';
     var riepilogo = el('p', 'stato-lettura');
@@ -48,7 +53,25 @@
     area.setAttribute('role', 'application');
     area.setAttribute('aria-label', 'Mappa delle foto approvate');
     var nota = el('p', 'nota');
+    var barraSentieri = el('div', 'barra-sentieri');
+    var etichettaComune = el('label', 'campo-data');
+    etichettaComune.appendChild(el('span', null, 'Sentieri CAI: comune'));
+    var sceltaComune = document.createElement('select');
+    etichettaComune.appendChild(sceltaComune);
+    var etichettaCerca = el('label', 'campo-data');
+    etichettaCerca.appendChild(el('span', null, 'Cerca un sentiero per numero o nome'));
+    var campoCerca = document.createElement('input');
+    campoCerca.type = 'search';
+    campoCerca.autocomplete = 'off';
+    etichettaCerca.appendChild(campoCerca);
+    barraSentieri.appendChild(etichettaComune);
+    barraSentieri.appendChild(etichettaCerca);
+    barraSentieri.hidden = true;
+    var statoSentieri = el('p', 'nota');
+    statoSentieri.setAttribute('aria-live', 'polite');
     contenitore.appendChild(riepilogo);
+    contenitore.appendChild(barraSentieri);
+    contenitore.appendChild(statoSentieri);
     contenitore.appendChild(area);
     contenitore.appendChild(nota);
 
@@ -65,10 +88,125 @@
         attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, SRTM · stile © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA)',
       });
       stradale.addTo(mappa);
-      L.control.layers({ 'Mappa stradale': stradale, 'Mappa topografica': topografica }, null, { collapsed: false }).addTo(mappa);
+      controlloLivelli = L.control.layers({ 'Mappa stradale': stradale, 'Mappa topografica': topografica }, null, { collapsed: false }).addTo(mappa);
       gruppo = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50 });
       mappa.addLayer(gruppo);
     }
+
+    // ---- sentieri CAI (OSM2CAI), dai dati già sincronizzati ----
+    var ATTRIBUZIONE_CAI = '© CAI - INFOMONT, derivati da OpenStreetMap. Disponibili con licenza <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL</a>';
+    var STILE = { color: '#b3261e', weight: 3, opacity: 0.85 };
+    var STILE_RISALTO = { color: '#0b57d0', weight: 5, opacity: 1 };
+
+    function schedaSentiero(p) {
+      var c = el('div', 'scheda-sentiero');
+      c.appendChild(el('strong', null, [p.ref, p.nome ? '– ' + p.nome : ''].filter(Boolean).join(' ')));
+      if (p.da && p.a) c.appendChild(el('div', null, p.da + ' → ' + p.a));
+      if (p.comuni.length) c.appendChild(el('div', 'nota', 'Comuni: ' + p.comuni.join(', ')));
+      var nomi = menuSentieri.settori.filter(function (s) { return p.settori.indexOf(s.id) !== -1; })
+        .map(function (s) { return window.CaiMenu.nomeSettore(s); });
+      if (nomi.length) c.appendChild(el('div', 'nota', 'Settore: ' + nomi.join(', ')));
+      return c;
+    }
+
+    // Mostra solo i sentieri che corrispondono a comune e ricerca; con un filtro attivo la mappa si porta su di loro.
+    function applicaFiltro() {
+      if (!menuSentieri || !livelloSentieri) return;
+      var comune = sceltaComune.value;
+      var testo = campoCerca.value;
+      var visibili = {};
+      window.CaiMenu.filtra(menuSentieri, { comune: comune, testo: testo }).forEach(function (p) { visibili[p.id] = true; });
+      var limiti = null;
+      var mostrati = 0;
+      Object.keys(tracciati).forEach(function (id) {
+        var t = tracciati[id];
+        if (visibili[id]) {
+          if (!livelloSentieri.hasLayer(t.linea)) livelloSentieri.addLayer(t.linea);
+          t.linea.setStyle(comune || testo ? STILE_RISALTO : STILE);
+          limiti = limiti ? limiti.extend(t.linea.getBounds()) : L.latLngBounds(t.linea.getBounds().getSouthWest(), t.linea.getBounds().getNorthEast());
+          mostrati++;
+        } else if (livelloSentieri.hasLayer(t.linea)) {
+          livelloSentieri.removeLayer(t.linea);
+        }
+      });
+      if ((comune || testo) && limiti) mappa.fitBounds(limiti, { padding: [40, 40], maxZoom: ZOOM_MASSIMO_ADATTAMENTO });
+      if (comune || testo) {
+        statoSentieri.textContent = mostrati === 0 ? 'Nessun sentiero corrisponde.' : (mostrati === 1 ? '1 sentiero trovato.' : mostrati + ' sentieri trovati.');
+      } else {
+        statoSentieri.textContent = Object.keys(tracciati).length + ' sentieri CAI sulla mappa. Cliccando un sentiero si vedono numero, nome e comuni.';
+      }
+    }
+
+    async function caricaSentieri() {
+      if (sentieriCaricati || !mappa) return;
+      statoSentieri.className = 'nota';
+      statoSentieri.textContent = 'Sto caricando i sentieri CAI…';
+      var r;
+      try {
+        r = await window.CaiApi.chiedi('/api/sentieri');
+      } catch (errore) {
+        statoSentieri.className = 'nota avviso-testo';
+        statoSentieri.textContent = 'I sentieri CAI non si sono caricati (connessione interrotta). Le foto si vedono lo stesso.';
+        return;
+      }
+      if (r.stato !== 200 || !r.corpo || !Array.isArray(r.corpo.percorsi)) {
+        statoSentieri.className = 'nota avviso-testo';
+        statoSentieri.textContent = 'I sentieri CAI non si sono caricati. Le foto si vedono lo stesso.';
+        return;
+      }
+      menuSentieri = r.corpo;
+      if (menuSentieri.percorsi.length === 0) {
+        statoSentieri.textContent = 'I sentieri CAI compaiono dopo la prima sincronizzazione e l\'attivazione dei settori (sezione «Sentieri»).';
+        return;
+      }
+      livelloSentieri = L.layerGroup([], { attribution: ATTRIBUZIONE_CAI });
+      livelloSentieri.addTo(mappa);
+      controlloLivelli.addOverlay(livelloSentieri, 'Sentieri CAI');
+      sceltaComune.textContent = '';
+      sceltaComune.appendChild(new Option('Tutti i comuni', ''));
+      menuSentieri.comuni.forEach(function (c) { sceltaComune.appendChild(new Option(c, c)); });
+      barraSentieri.hidden = false;
+      var perId = {};
+      menuSentieri.percorsi.forEach(function (p) { perId[p.id] = p; });
+      var mancanti = 0;
+      for (var i = 0; i < menuSentieri.settori.length; i++) {
+        var s = menuSentieri.settori[i];
+        statoSentieri.textContent = 'Sto caricando i sentieri CAI… settore ' + (i + 1) + ' di ' + menuSentieri.settori.length + '.';
+        var t;
+        try {
+          t = await window.CaiApi.chiedi('/api/admin/tracciati?settore=' + encodeURIComponent(s.id));
+        } catch (errore) {
+          if (!mappa) return; // la sezione è stata chiusa nel frattempo
+          mancanti++;
+          continue;
+        }
+        if (!mappa) return;
+        if (t.stato !== 200 || !t.corpo) { mancanti++; continue; }
+        Object.keys(t.corpo.tracciati).forEach(function (id) {
+          if (tracciati[id] || !perId[id]) return;
+          var p = perId[id];
+          var linea = L.polyline(t.corpo.tracciati[id].map(function (parte) {
+            return parte.map(function (pt) { return [pt[1], pt[0]]; });
+          }), STILE);
+          var scheda = null;
+          linea.bindPopup(function () { if (!scheda) scheda = schedaSentiero(p); return scheda; }, { maxWidth: 280 });
+          linea.on('mouseover', function () { linea.setStyle({ weight: 6 }); });
+          linea.on('mouseout', function () { linea.setStyle(sceltaComune.value || campoCerca.value ? STILE_RISALTO : STILE); });
+          tracciati[id] = { dati: p, linea: linea };
+          livelloSentieri.addLayer(linea);
+        });
+      }
+      sentieriCaricati = true;
+      applicaFiltro();
+      if (mancanti) {
+        statoSentieri.className = 'nota avviso-testo';
+        statoSentieri.textContent += ' ' + (mancanti === 1 ? 'Un settore non si è caricato.' : mancanti + ' settori non si sono caricati.') + ' Riapri la sezione per riprovare.';
+        sentieriCaricati = false;
+      }
+    }
+
+    sceltaComune.addEventListener('change', applicaFiltro);
+    campoCerca.addEventListener('input', applicaFiltro);
 
     // ---- foto ingrandita ----
     function chiudiGrande() {
@@ -209,14 +347,29 @@
     function mostra() {
       creaMappa();
       mappa.invalidateSize();
-      return carica();
+      return Promise.all([carica(), sentieriCaricati ? Promise.resolve() : (resetSentieri(), caricaSentieri())]);
+    }
+
+    // Prima di ricaricare i sentieri si toglie ciò che era rimasto di un tentativo incompleto.
+    function resetSentieri() {
+      Object.keys(tracciati).forEach(function (id) { if (livelloSentieri) livelloSentieri.removeLayer(tracciati[id].linea); });
+      tracciati = {};
+      if (livelloSentieri && mappa) { mappa.removeLayer(livelloSentieri); controlloLivelli.removeLayer(livelloSentieri); }
+      livelloSentieri = null;
     }
 
     function azzera() {
       chiudiGrande();
       Object.keys(miniature).forEach(function (id) { URL.revokeObjectURL(miniature[id]); });
       miniature = {};
-      if (mappa) { mappa.remove(); mappa = null; gruppo = null; }
+      if (mappa) { mappa.remove(); mappa = null; gruppo = null; controlloLivelli = null; }
+      livelloSentieri = null;
+      tracciati = {};
+      menuSentieri = null;
+      sentieriCaricati = false;
+      barraSentieri.hidden = true;
+      statoSentieri.textContent = '';
+      campoCerca.value = '';
       riepilogo.textContent = '';
       nota.textContent = '';
     }
