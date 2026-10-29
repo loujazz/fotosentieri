@@ -200,10 +200,13 @@
         }
         risultatiCerca.appendChild(c);
       });
-      if (d.trovati.length === 0) {
+      // Un numero cercato che non esiste con quel numero esatto (per esempio 110, quando ci sono solo 110A e sentieri che nominano «Bivio 110»).
+      var eNumero = /^[0-9A-Za-z]{1,8}$/.test(q) && /\d/.test(q);
+      var esatto = d.trovati.some(function (t) { return String(t.ref).toLowerCase() === q.toLowerCase(); });
+      if (d.trovati.length === 0 || (eNumero && !esatto)) {
         var c0 = el('div', 'risultato-cerca nascosto');
-        c0.appendChild(el('strong', null, '⚠️ «' + d.q + '» non c\'è nei dati scaricati dal CAI'));
-        c0.appendChild(el('p', null, 'Può succedere se il percorso non è validato (stato di accatastamento ' + (sinc.sda || '4') + ') nel CAI, se sta fuori dall\'area che si scarica' + (sinc.area ? ' (' + sinc.area.join(', ') + ' = ovest, sud, est, nord)' : '') + ', se è stato saltato durante lo scarico, oppure se l\'ultimo aggiornamento è precedente alla sua validazione.'));
+        c0.appendChild(el('strong', null, d.trovati.length === 0 ? '⚠️ «' + d.q + '» non c\'è nei dati scaricati dal CAI' : '⚠️ Nessun percorso con il numero esatto «' + d.q + '» nei dati scaricati dal CAI'));
+        c0.appendChild(el('p', null, 'Può succedere se il percorso non è validato (stato di accatastamento ' + (sinc.sda || '4') + ') nel CAI, se sta fuori dall\'area che si scarica' + (sinc.area ? ' (' + sinc.area.join(', ') + ' = ovest, sud, est, nord)' : '') + ', se è stato saltato durante lo scarico, se ha un tracciato lungo che lo scarico per riquadri non ha trovato, oppure se l\'ultimo aggiornamento è precedente alla sua validazione.'));
         c0.appendChild(el('div', 'nota', 'Ultimo aggiornamento riuscito: ' + (sinc.ultimaRiuscita ? dataOra(sinc.ultimaRiuscita) : 'mai') + ' · ' + sinc.percorsi + ' percorsi scaricati.'));
         if (sinc.saltati.length) c0.appendChild(el('div', 'avviso-testo', 'Elementi saltati nell\'ultimo scarico: ' + sinc.saltati.join('; ') + '.'));
         else c0.appendChild(el('div', 'nota', 'Nessun elemento saltato nell\'ultimo scarico.'));

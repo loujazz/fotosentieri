@@ -76,7 +76,7 @@ button.secondario {
 .foto.ok { border-left-color: #2f9e44; }
 .foto.avviso { border-left-color: #e8a700; }
 .foto.errore { border-left-color: #d9480f; }
-.foto .anteprima { width: 120px; min-width: 120px; height: 90px; object-fit: cover; border-radius: 8px; background: #e9ece6; }
+.foto .anteprima { width: 120px; min-width: 120px; height: 120px; object-fit: contain; border-radius: 8px; background: #e9ece6; }
 .foto .senza-immagine { display: flex; align-items: center; justify-content: center; text-align: center; font-size: .75rem; color: var(--grigio); padding: 4px; }
 .dati-foto { min-width: 0; }
 .nome-foto { display: block; word-break: break-all; font-size: .95rem; }
@@ -113,7 +113,7 @@ button.secondario.pericolo { background: #fff; color: #b13a0b; border-color: #b1
 .scelta-foto { position: absolute; top: 18px; left: 22px; width: 24px; height: 24px; z-index: 1; cursor: pointer; }
 button.miniatura { display: flex; align-items: center; justify-content: center; width: 100%; height: 200px; padding: 0; background: #e9ece6; color: var(--grigio); font-size: .85rem; font-weight: 400; border-radius: 8px; overflow: hidden; }
 button.miniatura:hover { background: #dfe3da; }
-.miniatura-img { width: 100%; height: 100%; object-fit: cover; }
+.miniatura-img { width: 100%; height: 100%; object-fit: contain; }
 .azioni-foto { display: flex; gap: 8px; margin-top: 6px; }
 .modale-sfondo { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
 .modale { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 460px; max-height: 92vh; overflow: auto; }

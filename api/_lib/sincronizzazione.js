@@ -7,7 +7,7 @@
 // Fasi di un giro:  inizio -> settori -> elenco -> percorsi -> chiusura -> riposo
 //   inizio    elenco dei settori dell'area; si scaricano solo quelli nuovi o cambiati (updated_at)
 //   settori   dettaglio dei settori da scaricare (confini)
-//   elenco    id e date di aggiornamento dei percorsi, per riquadri piccoli e distanziati
+//   elenco    id e date di aggiornamento dei percorsi, per riquadri piccoli e poi sempre più grandi (vedi riquadri())
 //   percorsi  dettaglio dei soli percorsi nuovi o cambiati
 //   chiusura  assegna ogni percorso ai settori, scrive i file finali, aggiorna la scheda "settori"
 //
@@ -77,6 +77,30 @@ function celle(bbox) {
     }
   }
   return risultato;
+}
+
+// Il server del CAI restituisce SOLO i percorsi interamente contenuti nel riquadro chiesto (verificato il 29/10/2026: un riquadro di
+// 200 m attorno a un punto del percorso 532 dà un elenco vuoto, mentre il riquadro grande che lo contiene lo include). Con i soli
+// riquadri piccoli, un percorso che ne attraversa il confine non verrebbe mai scaricato (era il caso del sentiero 110).
+// Per questo, oltre ai riquadri piccoli (livello 0), si chiedono riquadri sempre più grandi e sovrapposti: livello k = finestre larghe
+// 2^k celle, spostate di metà finestra, così ogni percorso grande al massimo quanto 2^(k-1) celle sta intero in almeno una finestra;
+// l'ultimo riquadro è tutta l'area. Ogni riquadro è [ovest, sud, est, nord, livello].
+function riquadri(bbox) {
+  const arr = (n) => Math.round(n * 1e6) / 1e6;
+  const lista = celle(bbox).map((c) => c.concat(0));
+  const larghezza = bbox[2] - bbox[0];
+  const altezza = bbox[3] - bbox[1];
+  let livello = 1;
+  for (let wl = CELLA_LON * 2, hl = CELLA_LAT * 2; wl < larghezza || hl < altezza; wl *= 2, hl *= 2, livello++) {
+    for (let s = bbox[1]; s < bbox[3] - 1e-9; s += hl / 2) {
+      for (let w = bbox[0]; w < bbox[2] - 1e-9; w += wl / 2) {
+        lista.push([arr(w), arr(s), arr(Math.min(w + wl, bbox[2])), arr(Math.min(s + hl, bbox[3])), livello]);
+      }
+    }
+  }
+  lista.push(bbox.map(arr).concat(livello));
+  const visti = new Set();
+  return lista.filter((r) => { const chiave = r.slice(0, 4).join(','); if (visti.has(chiave)) return false; visti.add(chiave); return true; });
 }
 
 // ---- stato ----
@@ -172,7 +196,7 @@ async function faseSettori(ctx) {
     stato.avanzamento.fatti++;
     ctx.modificato();
   }
-  stato.celle = celle(ctx.cfg.bbox);
+  stato.celle = riquadri(ctx.cfg.bbox);
   stato.cursoreCella = 0;
   stato.elenco = {};
   stato.avanzamento = { fatti: 0, totale: stato.celle.length };
@@ -183,12 +207,32 @@ async function faseElenco(ctx) {
   const { stato, cfg } = ctx;
   while (stato.cursoreCella < stato.celle.length) {
     if (ctx.finito()) return;
-    let ids = await osm.percorsiInRiquadro(stato.celle[stato.cursoreCella], cfg.sda);
+    const riquadro = stato.celle[stato.cursoreCella];
+    let ids;
+    try {
+      ids = await osm.percorsiInRiquadro(riquadro.slice(0, 4), cfg.sda);
+    } catch (errore) {
+      // I riquadri grandi (livello > 0) servono a trovare i percorsi lunghi: se il CAI non risponde a uno di essi non si ferma tutto
+      // (i percorsi trovati con i riquadri piccoli restano), ma si annota, perché potrebbero mancare dei percorsi lunghi.
+      // Un 429 (rallenta) invece ferma il passo come sempre, e i riquadri piccoli (livello 0) devono riuscire.
+      if (!(errore instanceof ErroApi) || riquadro[4] === 0 || errore.codice === 'osm2cai_rallentato') throw errore;
+      stato.saltati.push(`riquadro grande ${riquadro.slice(0, 4).join(',')} non scaricato (percorsi lunghi potrebbero mancare)`);
+      stato.cursoreCella++;
+      stato.avanzamento.fatti = stato.cursoreCella;
+      ctx.modificato();
+      continue;
+    }
     // Un riquadro senza percorsi può tornare come [] (elenco vuoto, come fanno i server PHP) invece che {}.
     if (Array.isArray(ids) && ids.length === 0) ids = {};
     if (!ids || typeof ids !== 'object' || Array.isArray(ids)) {
       const visto = Array.isArray(ids) ? 'un elenco' : (ids === null ? 'null' : typeof ids);
-      throw new ErroApi(502, 'osm2cai_risposta', `Elenco dei percorsi in un formato inatteso (riquadro ${stato.celle[stato.cursoreCella].join(',')}, ricevuto ${visto})`);
+      const messaggio = `Elenco dei percorsi in un formato inatteso (riquadro ${riquadro.slice(0, 4).join(',')}, ricevuto ${visto})`;
+      if (riquadro[4] === 0) throw new ErroApi(502, 'osm2cai_risposta', messaggio);
+      stato.saltati.push(`riquadro grande ${riquadro.slice(0, 4).join(',')} con risposta inattesa`);
+      stato.cursoreCella++;
+      stato.avanzamento.fatti = stato.cursoreCella;
+      ctx.modificato();
+      continue;
     }
     Object.keys(ids).forEach((id) => { stato.elenco[id] = ids[id]; });
     stato.cursoreCella++;
@@ -387,4 +431,4 @@ async function passo(opzioni) {
   return riassunto(stato);
 }
 
-module.exports = { passo, leggiStato, riassunto, leggiConfigurazione, celle, DATI };
+module.exports = { passo, leggiStato, riassunto, leggiConfigurazione, celle, riquadri, DATI };
