@@ -5,7 +5,7 @@ const { RUOLI, protetto, risposta, dominioAmmesso } = require('../_lib/auth');
 const { variabile } = require('../_lib/sheets');
 
 const rispondiUtente = protetto(RUOLI, async (req, res, utente) => {
-  res.status(200).json(utente);
+  res.status(200).json({ email: utente.email, nome: utente.nome, ruolo: utente.ruolo });
 });
 
 module.exports = async (req, res) => {

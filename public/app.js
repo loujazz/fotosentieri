@@ -9,6 +9,7 @@
   var pannello = null; // controllo della dashboard degli amministratori
   var mappa = null; // controllo della mappa (amministratori)
   var categorie = null; // controllo della pagina delle categorie (amministratori)
+  var utenti = null; // utenti e ruoli (solo super amministratore)
   var invii = null; // elenco dei propri invii (volontari)
   var sentieri = null; // controllo della pagina dei sentieri e della sincronizzazione (amministratori)
   var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
@@ -126,12 +127,14 @@
     $('sezione-mappa').hidden = nome !== 'mappa';
     $('sezione-categorie').hidden = nome !== 'categorie';
     $('sezione-sentieri').hidden = nome !== 'sentieri';
+    $('sezione-utenti').hidden = nome !== 'utenti';
     Array.prototype.forEach.call(document.querySelectorAll('#admin-navigazione button'), function (b) {
       b.classList.toggle('attiva', b.getAttribute('data-sezione') === nome);
     });
     if (nome === 'mappa') return mappa.mostra();
     if (nome === 'categorie') return categorie.mostra();
     if (nome === 'sentieri') return sentieri.mostra();
+    if (nome === 'utenti') return utenti.mostra();
     return pannello.ricarica();
   }
 
@@ -172,6 +175,8 @@
         if (!mappa) mappa = window.Mappa.avvia($('mappa-contenuto'));
         if (!categorie) categorie = window.Categorie.avvia($('categorie-contenuto'));
         if (!sentieri) sentieri = window.Sentieri.avvia($('sentieri-contenuto'));
+        if (!utenti) utenti = window.Utenti.avvia($('utenti-contenuto'));
+        $('scheda-utenti').hidden = r.corpo.ruolo !== 'super_admin'; // la gestione degli utenti è solo del super amministratore (il server lo controlla comunque)
         mostra('admin');
         return mostraSezioneAdmin('foto');
       }
@@ -210,6 +215,8 @@
     if (categorie) categorie.azzera();
     if (sentieri) sentieri.azzera();
     if (invii) invii.azzera();
+    if (utenti) utenti.azzera();
+    $('scheda-utenti').hidden = true;
     if (window.google && window.google.accounts) window.google.accounts.id.disableAutoSelect();
     mostraAccesso();
   }
