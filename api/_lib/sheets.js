@@ -147,6 +147,29 @@ async function aggiungiRighe(nomeScheda, oggetti) {
   }
 }
 
+// Crea la scheda (linguetta) con la riga delle intestazioni se non esiste ancora. Restituisce true se l'ha creata.
+async function assicuraScheda(nomeScheda, intestazioni) {
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(variabile('SHEET_ID'))}`;
+  try {
+    const client = await clientGoogle();
+    const meta = await client.request({ url: `${base}?fields=sheets.properties.title` });
+    const esiste = ((meta.data && meta.data.sheets) || []).some((f) => f.properties && f.properties.title === nomeScheda);
+    if (esiste) return false;
+    await client.request({ url: `${base}:batchUpdate`, method: 'POST', data: { requests: [{ addSheet: { properties: { title: nomeScheda } } }] } });
+    await client.request({
+      url: `${base}/values/${encodeURIComponent(`${nomeScheda}!A1`)}?valueInputOption=RAW`,
+      method: 'PUT',
+      data: { values: [intestazioni] },
+    });
+    return true;
+  } catch (errore) {
+    if (errore instanceof ErroApi) throw errore;
+    const stato = errore.response && errore.response.status;
+    console.error(`Creazione della scheda "${nomeScheda}" non riuscita (HTTP ${stato || '?'}):`, errore.message);
+    throw new ErroApi(500, 'errore_foglio', `Impossibile creare la scheda "${nomeScheda}"`);
+  }
+}
+
 function letteraColonna(indice) {
   let n = indice + 1;
   let lettera = '';
@@ -187,4 +210,4 @@ async function aggiornaCelle(nomeScheda, modifiche) {
   }
 }
 
-module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, aggiornaCelle, clientGoogle };
+module.exports = { ErroApi, variabile, leggiScheda, aggiungiRighe, aggiornaCelle, assicuraScheda, clientGoogle };

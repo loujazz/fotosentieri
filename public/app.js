@@ -9,6 +9,7 @@
   var pannello = null; // controllo della dashboard degli amministratori
   var mappa = null; // controllo della mappa (amministratori)
   var categorie = null; // controllo della pagina delle categorie (amministratori)
+  var sentieri = null; // controllo della pagina dei sentieri e della sincronizzazione (amministratori)
   var caricamento = null; // controllo della vista "Carica foto" (creato al primo accesso di un volontario)
 
   var $ = function (id) { return document.getElementById(id); };
@@ -123,11 +124,13 @@
     $('sezione-foto').hidden = nome !== 'foto';
     $('sezione-mappa').hidden = nome !== 'mappa';
     $('sezione-categorie').hidden = nome !== 'categorie';
+    $('sezione-sentieri').hidden = nome !== 'sentieri';
     Array.prototype.forEach.call(document.querySelectorAll('#admin-navigazione button'), function (b) {
       b.classList.toggle('attiva', b.getAttribute('data-sezione') === nome);
     });
     if (nome === 'mappa') return mappa.mostra();
     if (nome === 'categorie') return categorie.mostra();
+    if (nome === 'sentieri') return sentieri.mostra();
     return pannello.ricarica();
   }
 
@@ -155,6 +158,7 @@
         if (!pannello) pannello = window.Dashboard.avvia($('dashboard-contenuto'));
         if (!mappa) mappa = window.Mappa.avvia($('mappa-contenuto'));
         if (!categorie) categorie = window.Categorie.avvia($('categorie-contenuto'));
+        if (!sentieri) sentieri = window.Sentieri.avvia($('sentieri-contenuto'));
         mostra('admin');
         return mostraSezioneAdmin('foto');
       }
@@ -191,6 +195,7 @@
     if (pannello) pannello.azzera();
     if (mappa) mappa.azzera();
     if (categorie) categorie.azzera();
+    if (sentieri) sentieri.azzera();
     if (window.google && window.google.accounts) window.google.accounts.id.disableAutoSelect();
     mostraAccesso();
   }

@@ -148,3 +148,13 @@ button.miniatura:hover { background: #dfe3da; }
 .categoria.disattivata { border-left-color: #999; opacity: .75; }
 .azioni-categoria { display: flex; gap: 8px; }
 .azioni-categoria button { margin-top: 0; }
+
+/* Sentieri e sincronizzazione */
+.avanzamento-sync { margin: 8px 0 12px; }
+.avanzamento-sync[hidden] { display: none; }
+.lista-settori { display: grid; gap: 10px; margin: 12px 0; }
+.settore { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #fff; border-radius: 12px; border-left: 10px solid #2f9e44; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.settore.disattivata { border-left-color: #999; opacity: .8; }
+.codice-settore { min-width: 120px; }
+.nome-settore { flex: 1 1 260px; }
+.esito-salvataggio { min-height: 1.2em; }
