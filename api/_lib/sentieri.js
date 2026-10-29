@@ -41,8 +41,21 @@ async function menuSentieri() {
 
 const nomeSettore = (s) => (s.nome ? `${s.nome} (${s.codice})` : s.codice);
 
+// Il nome che manda il CAI comincia già con il numero («900 - Torrente Ravone - Parco del Paleotto»): non si ripete.
+function nomeSenzaNumero(p) {
+  const nome = String(p.nome || '').trim();
+  const ref = String(p.ref || '').trim();
+  if (ref && nome.toLowerCase().startsWith(ref.toLowerCase())) {
+    const dopo = nome.slice(ref.length);
+    const resto = dopo.replace(/^\s*[-–—:]\s*/, '');
+    if (resto !== dopo) return resto.trim();
+  }
+  return nome;
+}
+
 function testoSentiero(p) {
-  return [p.ref, p.nome ? '– ' + p.nome : '', p.da && p.a ? `(${p.da} → ${p.a})` : ''].filter(Boolean).join(' ');
+  const nome = nomeSenzaNumero(p);
+  return [p.ref, nome ? '– ' + nome : '', p.da && p.a ? `(${p.da} → ${p.a})` : ''].filter(Boolean).join(' ');
 }
 
 module.exports = { menuSentieri, nomeSettore, testoSentiero };

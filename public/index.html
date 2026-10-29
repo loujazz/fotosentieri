@@ -28,6 +28,7 @@
       <p id="accesso-avviso" class="messaggio avviso-testo" hidden></p>
       <p class="messaggio">Per entrare usa il tuo account <strong id="dominio-testo">@caibo.it</strong>.</p>
       <div id="pulsante-google"></div>
+      <p class="nota"><a href="guida.html" target="_blank" rel="noopener">Come si usa il sito: guida per i volontari</a></p>
     </section>
 
     <section id="vista-non-abilitato" class="vista" hidden>
@@ -47,6 +48,10 @@
       <div class="schede-stato" id="volontario-navigazione">
         <button type="button" class="scheda-stato attiva" data-sezione="carica">Carica foto</button>
         <button type="button" class="scheda-stato" data-sezione="invii">I miei invii</button>
+      </div>
+      <div class="aiuto-volontario">
+        <button type="button" id="come-si-usa" class="secondario piccolo">❓ Come si usa</button>
+        <a href="guida.html" target="_blank" rel="noopener">Guida completa</a>
       </div>
       <div id="sezione-carica">
         <h2>Carica foto</h2>
@@ -83,6 +88,7 @@
   <script src="menu.js"></script>
   <script src="carica.js"></script>
   <script src="miei-invii.js"></script>
+  <script src="giro.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/leaflet/leaflet.markercluster.js"></script>
   <script src="dashboard.js"></script>

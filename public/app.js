@@ -167,7 +167,10 @@
         if (!caricamento) caricamento = window.Carica.avvia($('carica-contenuto'));
         if (!invii) invii = window.MieiInvii.avvia($('invii-contenuto'));
         mostra('volontario');
-        return mostraSezioneVolontario('carica');
+        mostraSezioneVolontario('carica');
+        // La prima volta (in questo browser) parte il giro guidato; poi si rivede con «Come si usa».
+        if (window.CaiGiro && window.CaiGiro.daMostrare()) setTimeout(function () { window.CaiGiro.avvia(); }, 500);
+        return;
       }
       if (r.corpo.ruolo === 'admin' || r.corpo.ruolo === 'super_admin') {
         $('admin-ruolo').textContent = r.corpo.ruolo === 'super_admin' ? 'super amministratore' : 'amministratore';
@@ -209,6 +212,7 @@
   }
 
   function esci() {
+    if (window.CaiGiro) window.CaiGiro.chiudi();
     if (caricamento) caricamento.azzera();
     if (pannello) pannello.azzera();
     if (mappa) mappa.azzera();
@@ -254,6 +258,7 @@
   Array.prototype.forEach.call(document.querySelectorAll('#volontario-navigazione button'), function (b) {
     b.addEventListener('click', function () { mostraSezioneVolontario(b.getAttribute('data-sezione')); });
   });
+  $('come-si-usa').addEventListener('click', function () { mostraSezioneVolontario('carica'); window.CaiGiro.avvia(); });
   $('esci').addEventListener('click', esci);
   $('riprova').addEventListener('click', avvia);
   Array.prototype.forEach.call(document.querySelectorAll('.esci-vista'), function (b) {

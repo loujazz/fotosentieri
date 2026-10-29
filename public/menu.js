@@ -11,8 +11,20 @@
     return s.nome ? s.nome + ' (' + s.codice + ')' : s.codice;
   }
 
+  // Il nome che manda il CAI comincia già con il numero («900 - Torrente Ravone - Parco del Paleotto»): non si ripete.
+  function nomeSenzaNumero(p) {
+    var nome = String(p.nome || '').trim();
+    var ref = String(p.ref || '').trim();
+    if (ref && nome.toLowerCase().indexOf(ref.toLowerCase()) === 0) {
+      var resto = nome.slice(ref.length).replace(/^\s*[-–—:]\s*/, '');
+      if (resto !== nome.slice(ref.length)) return resto.trim();
+    }
+    return nome;
+  }
+
   function testoSentiero(p) {
-    return [p.ref, p.nome ? '– ' + p.nome : '', p.da && p.a ? '(' + p.da + ' → ' + p.a + ')' : ''].filter(Boolean).join(' ');
+    var nome = nomeSenzaNumero(p);
+    return [p.ref, nome ? '– ' + nome : '', p.da && p.a ? '(' + p.da + ' → ' + p.a + ')' : ''].filter(Boolean).join(' ');
   }
 
   // opzioni: { settore (id o null), comune (nome o ''), testo (ricerca per numero o nome) }
@@ -36,5 +48,5 @@
     return risultato;
   }
 
-  window.CaiMenu = { filtra: filtra, nomeSettore: nomeSettore, testoSentiero: testoSentiero, normalizza: normalizza };
+  window.CaiMenu = { filtra: filtra, nomeSettore: nomeSettore, testoSentiero: testoSentiero, nomeSenzaNumero: nomeSenzaNumero, normalizza: normalizza };
 })();

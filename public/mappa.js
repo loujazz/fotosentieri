@@ -162,7 +162,7 @@
 
     function schedaSentiero(p) {
       var c = el('div', 'scheda-sentiero');
-      c.appendChild(el('strong', null, [p.ref, p.nome ? '– ' + p.nome : ''].filter(Boolean).join(' ')));
+      c.appendChild(el('strong', null, [p.ref, window.CaiMenu.nomeSenzaNumero(p) ? '– ' + window.CaiMenu.nomeSenzaNumero(p) : ''].filter(Boolean).join(' ')));
       if (p.da && p.a) c.appendChild(el('div', null, p.da + ' → ' + p.a));
       if (p.comuni.length) c.appendChild(el('div', 'nota', 'Comuni: ' + p.comuni.join(', ')));
       var nomi = menuSentieri.settori.filter(function (s) { return p.settori.indexOf(s.id) !== -1; })
